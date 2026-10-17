@@ -1247,6 +1247,7 @@ html[data-mobile] {
       <button data-act="copy-link-zip"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 9.5 9.5 6.5"/><path d="M7 4.5 8.6 2.9a2.55 2.55 0 0 1 3.6 3.6L10.6 8"/><path d="m9 11.5-1.6 1.6a2.55 2.55 0 0 1-3.6-3.6L5.4 8"/></svg><span data-i18n="复制分享链接（压缩）">复制分享链接（压缩）</span></button>
     </div>
   </div>
+  <button class="btn ghost" id="v2Btn" data-act="to-v2" hidden data-i18n-title="在 V2（waveyes）里继续编辑这张图：拖边沿、逐信号配色、展示模式"><span data-i18n="V2">V2</span></button>
 </header>
 
 <main class="workspace">
@@ -1752,6 +1753,8 @@ const I18N_EN = {
   '已删除末尾 ': 'Removed the last ', ' 拍（Ctrl+Z 可撤销）': ' cycles (Ctrl+Z to undo)', '没有可删除的拍': 'Nothing left to remove',
   'kroki 代码块已复制 —— 粘贴到支持 kroki 的 Markdown 即可渲染': 'kroki block copied — paste into kroki-enabled Markdown to render',
   '复制分享链接（压缩）': 'Copy compressed share link',
+  '在 V2（waveyes）里继续编辑这张图：拖边沿、逐信号配色、展示模式': 'Continue this diagram in V2 (waveyes): draggable edges, per-signal colors, presentation mode',
+  'V2 页面不在同一目录，打不开 waveyes.html': 'V2 is not next to this page: waveyes.html could not be opened',
   '压缩分享链接已复制（含完整图表数据）': 'Compressed share link copied (contains the full diagram)',
   '分享链接已复制（含完整图表数据）': 'Share link copied (contains the full diagram)',
   '鼠标点击笔刷或按笔刷快捷键即可快速渲染并按当前方向自动跳到下一格': 'Click a brush or press its key — the cell is painted and the selection advances',
@@ -2762,6 +2765,30 @@ function buildHeadFoot(hf) {
   if (every !== undefined) o.every = every;
   return Object.keys(o).length ? o : null;
 }
+/* ---------- V2（waveyes.html）交接 ----------
+   V1 唯一的跨页通道就是地址栏 hash（见 loadDocFromHash），V2 收的也是同一格式，所以这里不新造协议。
+   超过 URL 上限（手机浏览器会截断）就退到一次性共享键 + #handoff，V2 读完立刻删除。
+   键名是新加的 'wdgui-handoff-wj'：绝不能复用 'wdgui-doc-v1'，那个键被 V1 自己、vscode 面板和
+   kodbox 宿主轮流重写，拿它交接会在跳转后被覆盖掉。 */
+const WD_V2_KEY = 'wdgui-handoff-wj';
+const WD_V2_HASH_MAX = 30000;
+function isWdEmbedded() {
+  /* vscode 面板与 kodbox 都注入 __wdDownloadHook / WD_HOST；宿主旁边没有 waveyes.html，跳转按钮必须藏起来 */
+  return typeof window.__wdDownloadHook === 'function' || typeof window.WD_HOST !== 'undefined'
+    || location.protocol.indexOf('vscode-webview') === 0;
+}
+function wdV2Url(json) {
+  const txt = encodeURIComponent(JSON.stringify(json));
+  if (txt.length <= WD_V2_HASH_MAX) return 'waveyes.html#' + txt;
+  try { storeSet(WD_V2_KEY, JSON.stringify(json)); } catch (e) { }
+  return 'waveyes.html#handoff';
+}
+function goV2() {
+  /* 自动存档是 400ms 防抖的：跳转前补一次 persist()，免得最后一笔编辑没落盘 */
+  persist();
+  location.href = wdV2Url(buildJSON());
+}
+
 function buildJSON() {
   const sig = state.tree.map(n => {
     if (n.kind === 'spacer') return {};
@@ -6987,6 +7014,7 @@ function handleAct(act, btn) {
       break;
     }
     case 'import-file': $('#fileInput').click(); break;
+    case 'to-v2': goV2(); break;
     case 'import-paste':
       $('#pasteMask').classList.add('open');
       $('#pasteErr').textContent = '';
@@ -7302,6 +7330,13 @@ function loadDocFromHash() {
       /* hash 是别人可构造的外部内容：走无求值的 parseLoose，绝不 eval（见 parseWaveJSON 注释） */
       if (json) { adoptState(parseDoc(parseLoose(json))); ok = true; }
     } catch (e) { /* 忽略坏链接 */ }
+  } else if (raw === 'handoff') {
+    /* V2 的图超过 URL 上限时走一次性键交接：读完即删，否则下次打开页面又被旧图盖一遍 */
+    try {
+      const saved = tryGet(WD_V2_KEY);
+      if (saved) { adoptState(parseDoc(parseLoose(saved))); ok = true; }
+    } catch (e) { /* 忽略坏交接 */ }
+    try { localStorage.removeItem(WD_V2_KEY); } catch (e) { }
   } else {
     try { adoptState(parseDoc(parseLoose(decodeURIComponent(raw)))); ok = true; } catch (e) { /* 忽略坏链接 */ }
   }
@@ -7327,6 +7362,8 @@ function init() {
   if (!restored) adoptState(parseDoc(JSON.parse(JSON.stringify(EXAMPLES[1].json))));
 
   applyHeadActions();
+  /* V2 按钮只在独立页面出现：宿主（vscode / kodbox）旁边没有 waveyes.html，点了只会跳到 404 */
+  $('#v2Btn').hidden = isWdEmbedded();
 
   /* 手机模式「通道与分组」面板：编辑工具栏 ◫ 显示/隐藏（隐藏时编辑区全宽），偏好持久化 */
   applySideDock();

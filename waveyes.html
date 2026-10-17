@@ -1,0 +1,2387 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaveYes</title>
+<meta name="description" content="事件表模型的波形编辑器：边沿可拖、逐信号配色、能讲也能改。单文件离线可用。">
+<meta name="app-version" content="v2-m0">
+<style>
+@import url('https://registry.npmmirror.com/lxgw-wenkai-webfont/latest/files/lxgwwenkaimono-regular.css');
+@import url('https://registry.npmmirror.com/lxgw-wenkai-webfont/latest/files/lxgwwenkai-regular.css');
+
+/* ===== 主题 token：浅色为默认（与 V1 的 data-theme="light" 对齐），深色舞台在 body[data-theme=dark] ===== */
+:root {
+  --bg:#EEF1F6; --panel:#FFFFFF; --panel-2:#F6F8FB; --raise:#EDF1F7;
+  --line:#CBD5E4; --line-soft:#E2E8F2; --text:#1B2536; --muted:#54637F; --faint:#6E7D96;
+  --acc:#0E9F6E; --acc-text:#0B7A55; --acc-ink:#032B1E; --amber:#B45309; --info:#0369A1; --danger:#DC2626;
+  --ch1:#059669; --ch2:#0284C7; --ch3:#B45309; --ch4:#DB2777; --ch5:#7C3AED; --ch6:#E11D48;
+  --sel:rgba(14,159,110,.22); --hover-veil:rgba(70,100,150,.10); --raise-hover:#E3E9F2;
+  --grid-major:#C3CFE0; --grid-minor:#E4EAF3; --wave-bg:#F6F8FB; --xbox:#64748B;
+  --r-lg:10px; --r-md:8px; --r-sm:6px;
+  --font-ui:"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-mono:"LXGW WenKai Mono","Cascadia Code",Consolas,"Noto Sans Mono CJK SC",monospace;
+  --shadow-pop:0 14px 38px rgba(30,50,90,.18),0 2px 8px rgba(30,50,90,.12);
+  --mask:rgba(20,35,60,.45);
+  color-scheme:light;
+}
+body[data-theme="dark"] {
+  --bg:#0F1520; --panel:#161E2C; --panel-2:#111825; --raise:#1D2738;
+  --line:#2E3D56; --line-soft:#212C3E; --text:#E7EDF7; --muted:#9FB0CC; --faint:#8496B4;
+  --acc:#10B981; --acc-text:#34D399; --acc-ink:#052016; --amber:#FBBF24; --info:#38BDF8; --danger:#F87171;
+  --ch1:#34D399; --ch2:#38BDF8; --ch3:#FBBF24; --ch4:#F472B6; --ch5:#A78BFA; --ch6:#FB7185;
+  --sel:rgba(16,185,129,.30); --hover-veil:rgba(150,180,230,.12); --raise-hover:#243149;
+  --grid-major:#28344A; --grid-minor:#1B2434; --wave-bg:#111825; --xbox:#64748B;
+  --shadow-pop:0 16px 44px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.40);
+  --mask:rgba(4,8,16,.62);
+  color-scheme:dark;
+}
+
+* { box-sizing:border-box; }
+html,body { height:100%; }
+body { margin:0; font-family:var(--font-ui); font-size:12.5px; color:var(--text); background:var(--bg);
+       overflow:hidden; -webkit-font-smoothing:antialiased; }
+button { font:inherit; color:inherit; cursor:pointer; }
+.mono { font-family:var(--font-mono); }
+.sp { flex:1; }
+
+.app { height:100%; display:flex; flex-direction:column; }
+
+/* ===== 顶栏 ===== */
+.topbar { height:48px; flex:0 0 48px; background:var(--panel); border-bottom:1px solid var(--line);
+          display:flex; align-items:center; gap:10px; padding:0 12px; position:relative; z-index:20; }
+.mark { font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--acc-text); white-space:nowrap; }
+.mark b { color:var(--text); font-weight:600; }
+.docname { font-family:var(--font-mono); font-size:12.5px; background:var(--raise); border:1px solid var(--line-soft);
+           border-radius:var(--r-sm); padding:3px 8px; display:flex; align-items:center; gap:6px; white-space:nowrap;
+           max-width:260px; overflow:hidden; text-overflow:ellipsis; }
+.docname input { all:unset; font:inherit; width:12ch; }
+.dirty { width:6px; height:6px; border-radius:50%; background:var(--amber); flex:0 0 6px; }
+.seg { display:flex; background:var(--raise); border:1px solid var(--line-soft); border-radius:var(--r-md); padding:2px; }
+.seg button { border:0; background:transparent; padding:4px 13px; border-radius:6px; font-size:12px; color:var(--muted); }
+.seg button.on { background:var(--panel); color:var(--acc-text); font-weight:600; box-shadow:0 1px 3px rgba(30,50,90,.12); }
+.seg button[disabled] { opacity:.45; cursor:not-allowed; }
+.btn { height:28px; padding:0 10px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--panel);
+       font-size:12px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn:hover { background:var(--raise-hover); }
+.btn.pri { background:var(--acc); border-color:var(--acc); color:#fff; }
+.btn.pri:hover { filter:brightness(1.06); background:var(--acc); }
+.icb { width:28px; height:28px; border:1px solid var(--line-soft); border-radius:var(--r-sm); background:var(--panel);
+       display:inline-flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; flex:0 0 28px; padding:0; }
+.icb:hover { background:var(--raise-hover); color:var(--text); }
+.icb.on { background:var(--sel); color:var(--acc-text); border-color:rgba(14,159,110,.4); }
+.menuwrap { position:relative; }
+.menu { position:absolute; right:0; top:32px; min-width:196px; background:var(--panel); border:1px solid var(--line);
+        border-radius:var(--r-md); box-shadow:var(--shadow-pop); padding:5px; display:none; z-index:30; }
+.menu.open { display:block; }
+.menu h5 { margin:6px 8px 3px; font-size:10.5px; font-weight:600; color:var(--faint); letter-spacing:.06em; }
+.menu button { display:flex; width:100%; align-items:center; gap:8px; border:0; background:transparent; text-align:left;
+               padding:6px 8px; border-radius:var(--r-sm); font-size:12px; }
+.menu button:hover { background:var(--raise-hover); }
+.menu button i { margin-left:auto; font-style:normal; color:var(--faint); font-size:10.5px; font-family:var(--font-mono); }
+.menu hr { border:0; border-top:1px solid var(--line-soft); margin:4px 2px; }
+
+/* ===== 三列骨架 ===== */
+.cols { flex:1; display:flex; min-height:0; }
+.tree { width:212px; flex:0 0 212px; background:var(--panel-2); border-right:1px solid var(--line);
+        display:flex; flex-direction:column; min-height:0; }
+.pane-h { height:30px; flex:0 0 30px; display:flex; align-items:center; gap:6px; padding:0 10px; font-size:11.5px;
+          color:var(--faint); border-bottom:1px solid var(--line-soft); letter-spacing:.04em; }
+.pane-h .cnt { margin-left:auto; font-family:var(--font-mono); font-size:10.5px; color:var(--faint); }
+.tbody { flex:1; overflow:auto; padding:4px 0 10px; }
+.trow { display:flex; align-items:center; gap:6px; padding:4px 10px 4px 12px; font-size:12px; cursor:default; }
+.trow:hover { background:var(--hover-veil); }
+.trow.sel { background:var(--sel); }
+.trow .dot { width:8px; height:8px; border-radius:2px; flex:0 0 8px; }
+.trow .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.trow .kd { font-size:10px; color:var(--faint); font-family:var(--font-mono); }
+.trow.off { opacity:.42; }
+.trow.g { color:var(--muted); font-weight:600; padding-left:6px; }
+.trow .eye { border:0; background:transparent; color:var(--faint); font-size:11px; padding:0 2px; }
+.trow .eye:hover { color:var(--text); }
+.tfoot { flex:0 0 auto; border-top:1px solid var(--line-soft); padding:7px 8px; display:flex; gap:6px; }
+.tfoot .btn { flex:1; justify-content:center; }
+
+.props { width:250px; flex:0 0 250px; background:var(--panel-2); border-left:1px solid var(--line);
+         display:flex; flex-direction:column; min-height:0; }
+.pbody { flex:1; overflow:auto; padding:10px; }
+.field { margin-bottom:11px; }
+.lab { display:block; font-size:10.5px; color:var(--faint); margin-bottom:4px; letter-spacing:.03em; }
+.inp { height:26px; padding:0 8px; border:1px solid var(--line-soft); border-radius:var(--r-sm); background:var(--panel);
+       display:flex; align-items:center; font-family:var(--font-mono); font-size:11.5px; gap:6px; }
+.inp input { all:unset; flex:1; min-width:0; font:inherit; }
+.mini-seg { display:flex; background:var(--raise); border:1px solid var(--line-soft); border-radius:var(--r-sm); padding:2px; flex-wrap:wrap; }
+.mini-seg button { flex:1; border:0; background:transparent; font-size:11px; padding:3px 4px; border-radius:4px; color:var(--muted); white-space:nowrap; }
+.mini-seg button.on { background:var(--panel); color:var(--acc-text); font-weight:600; }
+.trow2 { display:flex; align-items:center; gap:8px; }
+.tog { width:30px; height:17px; border-radius:9px; background:var(--line); position:relative; border:0; padding:0; flex:0 0 30px; transition:background .12s; }
+.tog i { position:absolute; left:2px; top:2px; width:13px; height:13px; border-radius:50%; background:#fff; transition:left .12s; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+.tog.on { background:var(--acc); }
+.tog.on i { left:15px; }
+.swrow { display:flex; gap:5px; flex-wrap:wrap; }
+.sw { width:18px; height:18px; border-radius:4px; box-shadow:inset 0 0 0 1px rgba(15,23,42,.10); border:0; padding:0; position:relative; }
+.sw.on { box-shadow:0 0 0 1.5px var(--panel),0 0 0 3px var(--text); }
+.sw.auto { background:var(--raise); color:var(--faint); font-size:9.5px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+/* 自定义取色器：彩虹底 + 中间一个当前色圆点，和预设色块一眼区分开 */
+input[type="color"].sw { background:
+    conic-gradient(from 45deg, #ef4444, #f59e0b, #10b981, #0ea5e9, #8b5cf6, #ec4899, #ef4444); }
+input[type="color"].sw::-webkit-color-swatch-wrapper { padding:0; }
+input[type="color"].sw::-webkit-color-swatch { border:none; border-radius:0; opacity:0; }
+.swsep { width:1px; background:var(--line-soft); margin:1px 3px; }
+.hint { font-size:11px; color:var(--faint); line-height:1.5; }
+
+/* ===== 画布 ===== */
+.stagewrap { flex:1; min-width:0; display:flex; flex-direction:column; position:relative; }
+.scroll { flex:1; overflow:auto; position:relative; background:var(--wave-bg); }
+.content { position:relative; display:block; }
+svg.waves { position:absolute; z-index:1; display:block; }
+.ruler { position:sticky; top:0; z-index:4; display:flex; height:32px; background:var(--wave-bg);
+         border-bottom:1px solid var(--line); }
+.corner { position:sticky; left:0; z-index:5; background:var(--wave-bg); border-right:1px solid var(--line);
+          display:flex; align-items:center; padding:0 8px; font-family:var(--font-mono); font-size:10.5px; color:var(--faint); }
+.rulbody { flex:0 0 auto; }
+.rulbody svg { display:block; }
+.row { display:flex; border-bottom:1px solid var(--grid-minor); }
+.row.hi { background:var(--hover-veil); }
+.nm-cell { position:sticky; left:0; z-index:3; background:var(--wave-bg); border-right:1px solid var(--line);
+           display:flex; align-items:center; gap:6px; padding:0 8px; font-size:12px; overflow:hidden; }
+.nm-cell .dot { width:8px; height:8px; border-radius:2px; flex:0 0 8px; }
+.nm-cell .t { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nm-cell .k { margin-left:auto; font-family:var(--font-mono); font-size:9.5px; color:var(--faint); flex:0 0 auto; }
+.vv-cell { position:sticky; z-index:3; background:var(--wave-bg); border-right:1px solid var(--line);
+           display:flex; align-items:center; justify-content:flex-end; padding:0 8px; font-family:var(--font-mono); font-size:11.5px; }
+.grow { display:flex; align-items:center; gap:6px; background:var(--panel-2); border-bottom:1px solid var(--line);
+        position:relative; z-index:2; font-size:11.5px; color:var(--muted); font-weight:600; padding:0 8px; }
+.grow .tw { width:14px; text-align:center; cursor:pointer; color:var(--faint); }
+.grow .cnt { margin-left:auto; font-family:var(--font-mono); font-weight:400; font-size:10.5px; color:var(--faint); }
+.vspacer { pointer-events:none; }
+
+.rail { position:absolute; top:40px; right:16px; z-index:12; display:flex; gap:2px; padding:3px;
+        background:var(--panel); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:var(--shadow-pop); }
+.rail button { width:28px; height:26px; border:0; background:transparent; border-radius:5px; color:var(--muted); font-size:13px;
+               display:flex; align-items:center; justify-content:center; }
+.rail button:hover { background:var(--raise-hover); color:var(--text); }
+.rail button.on { background:var(--sel); color:var(--acc-text); }
+.rail svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.35; stroke-linecap:round; stroke-linejoin:round; }
+.rail .sep { width:1px; background:var(--line-soft); margin:3px 2px; }
+.valpick { position:absolute; top:74px; right:16px; z-index:12; display:flex; gap:3px; padding:4px;
+           background:var(--panel); border:1px solid var(--line); border-radius:var(--r-md); box-shadow:var(--shadow-pop); align-items:center; }
+.valpick button { min-width:26px; height:24px; border:1px solid var(--line-soft); background:var(--panel); border-radius:5px;
+                  font-family:var(--font-mono); font-size:11.5px; padding:0 5px; }
+.valpick button.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+.valpick input { width:74px; height:24px; border:1px solid var(--line-soft); border-radius:5px; background:var(--raise);
+                 font-family:var(--font-mono); font-size:11.5px; padding:0 6px; color:var(--text); }
+
+.status { flex:0 0 26px; height:26px; background:var(--panel); border-top:1px solid var(--line);
+          display:flex; align-items:center; gap:14px; padding:0 10px; font-size:11px; color:var(--muted); }
+.status .mono { font-family:var(--font-mono); }
+.chip { padding:2px 7px; border:1px solid var(--line-soft); border-radius:20px; font-size:10.5px; background:var(--panel-2); }
+.chip.on { background:var(--sel); border-color:rgba(14,159,110,.35); color:var(--acc-text); }
+
+.empty[hidden] { display: none; }
+.empty { position:absolute; inset:32px 0 26px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+         gap:9px; color:var(--faint); pointer-events:none; font-size:12.5px; text-align:center; line-height:1.9; z-index:2; }
+.empty b { color:var(--muted); font-weight:600; }
+
+.toast { position:fixed; left:50%; bottom:44px; transform:translateX(-50%); background:var(--panel); color:var(--text);
+         border:1px solid var(--line); box-shadow:var(--shadow-pop); border-radius:var(--r-md); padding:8px 14px; font-size:12px;
+         z-index:99; max-width:70ch; }
+.toast.bad { border-color:var(--danger); color:var(--danger); }
+#dropmask { position:fixed; inset:0; background:var(--mask); z-index:90; display:none; align-items:center; justify-content:center; }
+#dropmask.on { display:flex; }
+#dropmask .box { background:var(--panel); border:1.5px dashed var(--acc); border-radius:var(--r-lg); padding:26px 40px; font-size:13px; }
+.rep-mask { position:fixed; inset:0; background:var(--mask); z-index:95; display:none; align-items:center; justify-content:center; }
+.rep-mask.on { display:flex; }
+.rep-mask .rep { width:min(580px,92vw); max-height:min(78vh,620px); display:flex; flex-direction:column;
+                 background:var(--panel); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); }
+.rep-mask .rep-h { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line); flex:0 0 auto; }
+.rep-mask .rep-h b { font-size:13px; font-weight:600; }
+.rep-mask .rep-h .sum { font-family:var(--font-mono); font-size:10.5px; color:var(--faint); }
+.rep-mask .rep-h .icb { margin-left:auto; }
+.rep-mask .rep-b { overflow:auto; padding:2px 12px 8px; font-size:12px; line-height:1.7; }
+.rep-mask .sec { margin-top:10px; }
+.rep-mask .sec h6 { margin:0 0 2px; font-size:10.5px; font-weight:600; letter-spacing:.03em; color:var(--muted);
+                    display:flex; align-items:baseline; gap:6px; }
+.rep-mask .sec h6 .cnt { font-family:var(--font-mono); font-weight:400; color:var(--faint); }
+.rep-mask .sec ul { margin:0; padding-left:17px; }
+.rep-mask .sec li { margin:1px 0; }
+.rep-mask .clean { padding:14px 2px 4px; font-size:12.5px; color:var(--muted); }
+.rep-mask .rep-f { display:flex; gap:6px; align-items:center; padding:9px 12px; border-top:1px solid var(--line); flex:0 0 auto; }
+.rep-mask .rep-f .sp { margin-left:auto; }
+.selftest { position:fixed; left:8px; bottom:34px; z-index:99; background:var(--panel); border:1px solid var(--line);
+            border-radius:var(--r-md); padding:8px 10px; font-family:var(--font-mono); font-size:11px; max-height:60%; overflow:auto;
+            box-shadow:var(--shadow-pop); display:none; white-space:pre; }
+.selftest.on { display:block; }
+::-webkit-scrollbar { width:11px; height:11px; }
+::-webkit-scrollbar-thumb { background:var(--line); border-radius:6px; border:3px solid transparent; background-clip:content-box; }
+::-webkit-scrollbar-track { background:transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <span class="mark">wave<b>yes</b></span>
+    <span class="docname" id="docName" title="双击重命名">未命名.wy</span>
+    <span class="dirty" id="dirtyDot" hidden></span>
+    <div class="seg" id="modeSeg">
+      <button class="on" data-mode="edit">编辑</button>
+      <button disabled title="M4 展示模式">展示</button>
+    </div>
+    <div class="sp"></div>
+    <button class="btn" data-act="sample">示例</button>
+    <button class="btn" data-act="new">新建</button>
+    <div class="menuwrap">
+      <button class="btn" data-menu="mImport">导入 ▾</button>
+      <div class="menu" id="mImport">
+        <h5>本阶段可用</h5>
+        <button data-act="open-wy">打开 .wy / WaveJSON / .wave…<i>Ctrl+O</i></button>
+        <hr>
+        <h5>后续里程碑</h5>
+        <button disabled>VCD / .vcd.gz<i>M5</i></button>
+        <button disabled>.waved（cocotb）<i>M5</i></button>
+        <button disabled>FST<i>M8</i></button>
+      </div>
+    </div>
+    <div class="menuwrap">
+      <button class="btn" data-menu="mExport">导出 ▾</button>
+      <div class="menu" id="mExport">
+        <h5>文件</h5>
+        <button data-act="save">保存 .wy<i>Ctrl+S</i></button>
+        <button data-act="save-as">.wy 另存为…</button>
+        <h5>图片</h5>
+        <button data-act="png2">PNG 2×<i>Ctrl+Shift+S</i></button>
+        <button data-act="png4">PNG 4×</button>
+        <button data-act="svg">SVG（内嵌 .wy）</button>
+        <hr>
+        <h5>兼容</h5>
+        <button data-act="export-wj">WaveJSON（先看报告）</button>
+        <button disabled>VCD<i>M5</i></button>
+      </div>
+    </div>
+    <button class="btn" data-act="to-v1" title="带着这张图回 V1 编辑：先出兼容性报告，确认了再走">V1</button>
+    <button class="icb" data-act="theme" id="themeBtn" title="浅/深舞台">◐</button>
+  </header>
+
+  <div class="cols">
+    <aside class="tree">
+      <div class="pane-h">信号<span class="cnt" id="treeCnt">0</span></div>
+      <div class="tbody" id="treeBody"></div>
+      <div class="tfoot">
+        <button class="btn" data-act="add-sig">＋ 信号</button>
+        <button class="btn" data-act="add-group">＋ 分组</button>
+      </div>
+    </aside>
+
+    <main class="stagewrap">
+      <div class="scroll" id="scroll">
+        <div class="content" id="content">
+          <svg class="waves" id="waves" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="rowbox"></div>
+        </div>
+      </div>
+      <div class="empty" id="empty" hidden>
+        <div><b>空白文档</b></div>
+        <div>点左下「＋ 信号」开始手画，或把 <span class="mono">.wy</span> 拖进窗口<br>
+          快捷键：<span class="mono">f</span> 适配全部 · <span class="mono">g</span> 改网格 · <span class="mono">空格</span> 平移 · <span class="mono">滚轮</span> 以光标为锚缩放</div>
+      </div>
+      <div class="rail" id="rail">
+        <button data-tool="select" title="选择 / 检视（V）"><svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke-dasharray="2.6 2.2"/></svg></button>
+        <button data-tool="paint" class="on" title="画笔（B）：拖过时刻写事件"><svg viewBox="0 0 16 16"><path d="M11.4 2.3 13.7 4.6 5.9 12.4l-3.3.7.7-3.3z"/><path d="M9.6 4.1 11.9 6.4"/></svg></button>
+        <button data-tool="cursor" title="游标（C）：点击钉住 A"><svg viewBox="0 0 16 16"><path d="M8 1.6v12.8"/><path d="M8 5.2 12.6 2.2M8 5.2 12.6 8.2"/></svg></button>
+        <span class="sep"></span>
+        <button data-tool="snap" class="on" title="吸附到网格（G 切网格步长）"><svg viewBox="0 0 16 16"><path d="M3.4 2.2v6a4.6 4.6 0 0 0 9.2 0v-6"/><path d="M3.4 5.4h3.1M9.5 5.4h3.1"/></svg></button>
+      </div>
+      <div class="valpick" id="valpick"></div>
+      <div class="status" id="status"></div>
+    </main>
+
+    <aside class="props">
+      <div class="pane-h">属性<span class="cnt" id="propsCnt"></span></div>
+      <div class="pbody" id="propsBody"></div>
+    </aside>
+  </div>
+</div>
+<div id="dropmask"><div class="box">松手即打开 <span class="mono">.wy</span> / <span class="mono">.wave</span> / WaveJSON，或带内嵌数据的 <span class="mono">.svg</span> <span class="mono">.png</span></div></div>
+<input type="file" id="fileInput" accept=".wy,.wave,.json,.txt,application/json" hidden>
+<div class="rep-mask" id="wjrep">
+  <div class="rep" role="dialog" aria-modal="true" aria-labelledby="wjrepTitle">
+    <div class="rep-h"><b id="wjrepTitle">兼容性报告</b><span class="sum" id="wjrepSum"></span>
+      <button class="icb" data-act="rep-close" title="关闭 (Esc)">✕</button></div>
+    <div class="rep-b" id="wjrepBody"></div>
+    <div class="rep-f" id="wjrepFoot"></div>
+  </div>
+</div>
+<div class="selftest" id="selftest"></div>
+
+<script>
+'use strict';
+/* =============================================================================
+   WaveYes V2 — M0：事件模型 + SVG 渲染 + 时间尺 + 缩放平移 + .wy 读写 + PNG 导出
+   单文件、零构建、离线可用。时刻一律整数 tick，「格」只做吸附和网格线。
+   ========================================================================== */
+
+/* ---------- 0. 小工具 ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const r2 = n => Math.round(n * 100) / 100;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let uidN = 1; const uid = p => p + (uidN++);
+function toast(msg, bad) {
+  const t = document.createElement('div'); t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), bad ? 3600 : 2000);
+}
+function tryGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function trySet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+
+/* ---------- 1. 模型 ---------- */
+const KINDS = ['bit', 'bus', 'analog', 'clock'];
+const FMTS = ['bin', 'oct', 'dec', 'hex', 'ascii', 'real', 'sym'];
+const SPECIAL = { x: 'x', z: 'z' };
+
+function newSig(name, kind, opt) {
+  opt = opt || {};
+  const s = {
+    id: uid('s'), name: name || 'sig', kind: kind || 'bit', bits: opt.bits || (kind === 'bus' ? 8 : 1),
+    color: opt.color || { mode: 'auto', hex: null },
+    stroke: opt.stroke || { style: 'solid', width: 1.6 },
+    fmt: '',
+    map: opt.map || [],
+    events: opt.events ? opt.events.slice().sort((a, b) => a.t - b.t) : [],
+    labels: [], showValue: opt.showValue !== false, showGlitch: !!opt.showGlitch, visible: true,
+    unit: opt.unit || ''
+  };
+  s.fmt = opt.fmt || defFmt(s);
+  return s;
+}
+function newGroup(name, lanes) { return { id: uid('g'), group: name || '分组', collapsed: false, lanes: lanes || [] }; }
+function newDoc() {
+  return {
+    wy: 1,
+    meta: { name: '未命名', origin: 'hand', timescale: '1ns' },
+    time: { unit: 'ns', perUnit: 1, t0: 0, t1: 200, grid: { step: 5, sub: 5 } },
+    lanes: [], edges: [], bands: [], markers: [],
+    view: { theme: 'light', valueCol: true, cursors: [{ name: 'A', t: 0 }], fmtDefault: 'hex' },
+    decodes: [], scenes: [], graphs: []
+  };
+}
+
+let DOC = newDoc();
+const TIME = () => DOC.time;
+function tpu() { return DOC.time.perUnit || 1; }          // 一个显示单位 = 多少 tick
+function flat(list, out) {
+  out = out || [];
+  const arr = Array.isArray(list) ? list : (list && list.lanes) || DOC.lanes;
+  arr.forEach(n => { if (n.lanes) { out.push(n); if (!n.collapsed) flat(n.lanes, out); } else out.push(n); });
+  return out;
+}
+function allSigs(list, out) {
+  out = out || [];
+  const arr = Array.isArray(list) ? list : (list && list.lanes) || DOC.lanes;
+  arr.forEach(n => { if (n.lanes) allSigs(n.lanes, out); else out.push(n); });
+  return out;
+}
+function sigById(id) { return allSigs().find(s => s.id === id) || null; }
+function rowList() { return flat(); }                     // 含分组头的可见行
+
+/* ---------- 事件表：段由相邻事件推导 ---------- */
+function lowerBound(evs, t) { let a = 0, b = evs.length; while (a < b) { const m = (a + b) >> 1; if (evs[m].t < t) a = m + 1; else b = m; } return a; }
+function valueAt(sig, t) {
+  const e = sig.events; if (!e.length) return 'x';
+  const i = lowerBound(e, t);                              // 第一个 t >= 查询点
+  if (i < e.length && e[i].t === t) return e[i].v;         // 正好落在跳变上：新值已生效（laneSegs 也是这么切段的）
+  return i === 0 ? 'x' : e[i - 1].v;
+}
+/** 返回 [a,b) 内的段（含窗口裁剪），首段可能来自窗口外的事件 */
+function laneSegs(sig, a, b) {
+  const evs = sig.events, out = [];
+  if (b <= a) return out;
+  if (!evs.length) return [{ t0: a, t1: b, v: 'x' }];
+  let i = lowerBound(evs, a);                 // 第一个 t >= a 的事件
+  let t = a;
+  let v = i === 0 ? (evs[0].t <= a ? evs[0].v : 'x') : evs[i - 1].v;
+  while (t < b) {
+    const nx = (i < evs.length && evs[i].t < b) ? Math.max(t, evs[i].t) : b;
+    if (nx > t) out.push({ t0: t, t1: nx, v });
+    if (i >= evs.length || evs[i].t >= b) break;
+    v = evs[i].v; t = evs[i].t; i++;
+  }
+  return out;
+}
+/** 归一：按 t 排序、同 t 留后者、掐头去尾 */
+function normalize(sig) {
+  sig.events.sort((a, b) => a.t - b.t);
+  const out = [];
+  for (const e of sig.events) { if (out.length && out[out.length - 1].t === e.t) out[out.length - 1] = e; else out.push(e); }
+  sig.events = out;
+}
+/** 把 [a,b) 写成值 v，b 之后恢复原值。画笔的基本操作。 */
+function setRange(sig, a, b, v) {
+  if (b <= a) return;
+  const after = valueAt(sig, b);
+  const evs = sig.events.filter(e => e.t < a || e.t >= b);
+  evs.push({ t: a, v });
+  if (b < DOC.time.t1 && after !== v) evs.push({ t: b, v: after });
+  sig.events = evs; normalize(sig);
+}
+function insertEdge(sig, t, v) { sig.events.push({ t, v }); normalize(sig); }
+function dropEdgeNear(sig, t) {
+  const i = sig.events.findIndex(e => e.t === t);
+  if (i >= 0) sig.events.splice(i, 1);
+}
+function eventSpan(sig) {
+  if (!sig.events.length) return null;
+  return [sig.events[0].t, sig.events[sig.events.length - 1].t];
+}
+
+/* ---------- 2. 取值格式化 ---------- */
+function isSpecial(v) { return v === 'x' || v === 'z'; }
+function num(v) { return typeof v === 'number' && isFinite(v); }
+function defFmt(sig) { return sig.kind === 'bus' ? (sig.bits <= 2 ? 'bin' : 'hex') : 'hex'; }
+function fmtVal(sig, v) {
+  if (isSpecial(v)) return v;
+  /* 数据格在 WaveJSON 里没给 data 时，导入的是合成序号（见 wjEntryToLane 的 valOf/nextSyn）。
+     序号是内部编号，不是取值：不管类型是总线还是 1 bit、格式是 sym 还是 hex，一律留空，
+     和 WaveDrom 的空砖一致。 */
+  const m = (sig.map || []).find(x => x.v === v);
+  if (m && m.name === '' && !m.short) return '';
+  if (sig.kind === 'analog') return (Math.round(v * 1000) / 1000) + (sig.unit ? ' ' + sig.unit : '');
+  if (sig.kind === 'bit' || sig.kind === 'clock') return v === 1 ? '1' : v === 0 ? '0' : String(v);
+  const bits = sig.bits || 0, nib = Math.max(1, Math.ceil(bits / 4));
+  switch (sig.fmt) {
+    case 'bin': return '0b' + (v >>> 0).toString(2).padStart(bits || 1, '0');
+    case 'oct': return '0o' + (v >>> 0).toString(8).padStart(Math.ceil((bits || 1) / 3), '0');
+    case 'dec': return String(v);
+    case 'ascii': { const c = v & 0x7f; return (c >= 32 && c < 127) ? String.fromCharCode(c) : String(v); }
+    case 'real': return String(v);
+    case 'sym': {
+      const hit = (sig.map || []).find(m => m.v === v);
+      if (!hit) return '0x' + (v >>> 0).toString(16).toUpperCase().padStart(nib, '0');
+      /* short / name 有一个就用它；显式的空字符串是「就是没标签」（WaveJSON 只写了 = 或 2… 却没给 data），
+         留空才和 WaveDrom 一致，别拿合成序号冒充标签。导出走 wjLabel，它本来就按 name 是否为 null 判。 */
+      if (hit.short) return hit.short;
+      return hit.name != null ? hit.name : String(v);
+    }
+    default: return '0x' + (v >>> 0).toString(16).toUpperCase().padStart(nib, '0');
+  }
+}
+function parseVal(str, sig) {
+  str = String(str == null ? '' : str).trim();
+  if (!str) return null;
+  if (/^x$/i.test(str)) return 'x';
+  if (/^z$/i.test(str)) return 'z';
+  if (sig.kind === 'analog') { const f = parseFloat(str); return isFinite(f) ? f : null; }
+  const BASE = { b: 2, o: 8, d: 10, h: 16 };
+  let m;
+  if ((m = /^(\d*)['`]([bodh])([0-9a-f_]+)$/i.exec(str))) {          // 8'b1001_0000 / 'd5
+    const n = parseInt(m[3].replace(/_/g, ''), BASE[m[2].toLowerCase()]);
+    return isFinite(n) ? n : null;
+  }
+  if ((m = /^0([xbo])([0-9a-f_]+)$/i.exec(str))) return parseInt(m[2].replace(/_/g, ''), { x: 16, b: 2, o: 8 }[m[1].toLowerCase()]);
+  if (/^-?\d+(\.\d+)?$/.test(str)) { const n = Number(str); return sig.kind === 'bit' ? (n ? 1 : 0) : n; }
+  if (/^[0-9a-f]+$/i.test(str)) return parseInt(str, 16);            // 裸十六进制
+  return null;
+}
+function fmtT(t, withUnit) {
+  const per = tpu(), v = Math.round((t / per) * 1e6) / 1e6;
+  return withUnit === false ? String(v) : v + ' ' + DOC.time.unit;
+}
+/* 标尺步进：既要是「好看的数」（1 / 2 / 5 × 10ⁿ 个显示单位），又要落在格线上（grid.step 的整数倍）。
+   只按 tick 取整的话，WaveJSON 导入（一格 = 20 tick = 1 个显示单位）会标出 2.5 这种半格读数，
+   而 WaveDrom 的读数本来就是一格一个数。凑不出公倍数（用户把格宽设成 3 之类）就退回 niceStep。 */
+const RULER_CAND = (() => { const c = []; for (let e = -3; e <= 9; e++) { const p = Math.pow(10, e); for (const k of [1, 2, 5]) c.push(p * k); } return c.sort((a, b) => a - b); })();
+function rulerStep(minTicks) {
+  const per = tpu(), gu = DOC.time.grid.step / per;                 // 一格 = 多少显示单位
+  if (!(gu > 0)) return niceStep(minTicks);
+  for (const u of RULER_CAND) {
+    const m = u / gu;
+    if (u * per >= minTicks && Math.abs(m - Math.round(m)) < 1e-9) return u * per;
+  }
+  return niceStep(minTicks);
+}
+function niceStep(minTicks) {
+  const p = Math.pow(10, Math.floor(Math.log10(Math.max(minTicks, 1e-9))));
+  for (const k of [1, 2, 5, 10]) if (p * k >= minTicks) return p * k;
+  return p * 10;
+}
+
+/* ---------- 3. 视图状态 ---------- */
+const V = {
+  zoom: 4,                 // px / 显示单位（不是 px/tick）
+  tool: 'paint',
+  paintVal: 1,
+  snap: true,
+  sel: null,               // 选中信号 id
+  hoverT: null,            // 鼠标下的 tick
+  cursorT: 0,              // 钉住的 A
+  nameW: 176,
+  lane: 44,
+  dirty: false,
+  fileHandle: null
+};
+const MINZOOM = 0.05, MAXZOOM = 400;
+function pxps() { return V.zoom / tpu(); }                 // px / tick
+function totalPx() { return Math.max(0, (DOC.time.t1 - DOC.time.t0) * pxps()); }
+function xOf(t) { return (t - DOC.time.t0) * pxps(); }
+function tOf(x) { return DOC.time.t0 + x / pxps(); }
+function vpW() { return $('#scroll').clientWidth - V.nameW - valW(); }
+function valW() { return DOC.view.valueCol ? 74 : 0; }
+function snapT(t) {
+  if (!V.snap) return Math.round(t);
+  const s = Math.max(1, DOC.time.grid.step);
+  return Math.round(t / s) * s;
+}
+/* 主题色快照：渲染时取字面量，屏幕与导出共用同一条绘制路径 */
+let TOK = {};
+function readTokens() {
+  const cs = getComputedStyle(document.body);
+  const g = n => cs.getPropertyValue(n).trim();
+  TOK = {
+    text: g('--text'), muted: g('--muted'), faint: g('--faint'), acc: g('--acc'), accText: g('--acc-text'),
+    amber: g('--amber'), danger: g('--danger'), sel: g('--sel'),
+    gridMajor: g('--grid-major'), gridMinor: g('--grid-minor'), waveBg: g('--wave-bg'), xbox: g('--xbox'),
+    line: g('--line'), lineSoft: g('--line-soft'), panel: g('--panel'),
+    ch: [g('--ch1'), g('--ch2'), g('--ch3'), g('--ch4'), g('--ch5'), g('--ch6')],
+    /* 字体名带双引号，直接塞进 style="font-family:…" 会把属性截断，换成单引号 */
+    mono: g('--font-mono').replace(/"/g, "'"), ui: g('--font-ui').replace(/"/g, "'"),
+    dark: document.body.dataset.theme === 'dark'
+  };
+}
+let autoN = 0;
+function sigColor(sig) {
+  if (sig.color && sig.color.mode === 'fixed' && sig.color.hex) return sig.color.hex;
+  return TOK.ch[autoN++ % TOK.ch.length];
+}
+
+/* ---------- 4. 绘制 ---------- */
+const PADY = 8;
+function laneYs() { return { hi: PADY, lo: V.lane - PADY, mid: V.lane / 2 }; }
+
+function bitPath(segs, yHi, yLo) {
+  let d = '';
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i]; if (!isBit(s.v)) continue;
+    const y = s.v === 1 ? yHi : yLo, x0 = xOf(s.t0), x1 = xOf(s.t1);
+    const p = i > 0 ? segs[i - 1] : null;
+    if (!p || !isBit(p.v)) { d += `M${r2(x0)} ${y}`; }
+    else {
+      const py = p.v === 1 ? yHi : yLo;
+      if (py === y) d += `L${r2(x1)} ${y}`;
+      else { const dx = Math.min(4, Math.max(0, (x1 - x0) / 2)); d += `L${r2(x0 - dx)} ${py}L${r2(x0 + dx)} ${y}L${r2(x1)} ${y}`; }
+    }
+  }
+  return d;
+}
+function isBit(v) { return v === 0 || v === 1; }
+function busHex(x0, x1, yTop, yBot, dx) {
+  if (x1 - x0 < 2 * dx + 1) return `M${r2(x0)} ${yTop}H${r2(x1)}V${yBot}H${r2(x0)}Z`;
+  return `M${r2(x0 + dx)} ${yTop}H${r2(x1 - dx)}L${r2(x1)} ${r2((yTop + yBot) / 2)}L${r2(x1 - dx)} ${yBot}H${r2(x0 + dx)}L${r2(x0)} ${r2((yTop + yBot) / 2)}Z`;
+}
+function laneBody(sig, y, a, b, col) {
+  /* y 是绝对坐标（画布坐标系）；laneYs() 给的是行内相对偏移，别混用 */
+  const { hi, lo } = laneYs();
+  const top = y, bot = y + V.lane, midY = y + V.lane / 2;
+  const gTop = y + hi, gBot = y + lo, span = lo - hi;
+  const segs = laneSegs(sig, a, b);
+  const sw = (sig.stroke && sig.stroke.width) || 1.6;
+  const style = (sig.stroke && sig.stroke.style) || 'solid';
+  let s = `<g data-sig="${sig.id}">`;
+  if (style === 'glow') s = `<g data-sig="${sig.id}" filter="url(#glow)">`;
+  const stroke = `stroke="${col}" stroke-width="${sw}" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+  const dimFill = TOK.dark ? hexA(col, .10) : hexA(col, .08);
+
+  if (sig.kind === 'analog') {
+    const evs = sig.events.filter(e => e.t >= a - (b - a) * .1 && e.t <= b + (b - a) * .1);
+    const vals = (evs.length ? evs : [{ v: 0 }]).map(e => e.v).filter(num);
+    let vmin = Math.min.apply(null, vals), vmax = Math.max.apply(null, vals);
+    if (vmin === vmax) { vmin -= 1; vmax += 1; }
+    const pad = (vmax - vmin) * .12; vmin -= pad; vmax += pad;
+    const ay = v => gBot - (v - vmin) / (vmax - vmin) * span;
+    const pts = evs.map(e => `${r2(xOf(e.t))},${r2(ay(e.v))}`);
+    if (pts.length > 1) {
+      s += `<polygon points="${r2(xOf(evs[0].t))},${r2(bot - 2)} ${pts.join(' ')} ${r2(xOf(evs[evs.length - 1].t))},${r2(bot - 2)}" fill="${hexA(col, TOK.dark ? .12 : .10)}" stroke="none"/>`;
+      s += `<polyline points="${pts.join(' ')}" ${stroke}/>`;
+    } else if (pts.length === 1) {
+      s += `<circle cx="${pts[0].split(',')[0]}" cy="${pts[0].split(',')[1]}" r="2.4" fill="${col}"/>`;
+    }
+    return s + '</g>';
+  }
+
+  const isBusish = sig.kind === 'bus';
+  for (const g of segs) {
+    const x0 = xOf(g.t0), x1 = xOf(g.t1), w = x1 - x0;
+    if (isBusish || !isBit(g.v)) {
+      const sp = isSpecial(g.v);
+      const col2 = sp ? TOK.xbox : col;
+      const fill = sp ? (TOK.dark ? 'rgba(100,116,139,.18)' : 'rgba(100,116,139,.10)') : dimFill;
+      s += `<path d="${busHex(x0, x1, gTop, gBot, Math.min(6, w / 3))}" fill="${fill}" stroke="${col2}" stroke-width="${sp ? 1 : sw}"${sp ? ' stroke-dasharray="3 2"' : ''}/>`;
+      if (sig.showValue && w > 26) {
+        const lab = fmtVal(sig, g.v);
+        s += `<text x="${r2((x0 + x1) / 2)}" y="${r2(midY + 3.6)}" text-anchor="middle" style="font-family:${TOK.mono};font-size:11px;fill:${sp ? TOK.faint : col};paint-order:stroke;stroke:${TOK.waveBg};stroke-width:3px;stroke-linejoin:round">${esc(lab)}</text>`;
+      }
+    }
+  }
+  if (!isBusish) {
+    const d = bitPath(segs, gTop, gBot);
+    if (d) s += `<path d="${d}" ${stroke}/>`;
+    if (sig.kind === 'clock' && segs.length) {
+      s += `<text x="${r2(xOf(a) + 3)}" y="${top + 11}" style="font-family:${TOK.mono};font-size:9px;fill:${TOK.faint}">clk</text>`;
+    }
+  }
+  /* 用户标注 labels */
+  for (const L of (sig.labels || [])) {
+    if (L.t < a || L.t > b) continue;
+    s += `<text x="${r2(xOf(L.t))}" y="${top + 11}" style="font-family:${TOK.ui};font-size:10px;fill:${L.color || TOK.amber};paint-order:stroke;stroke:${TOK.waveBg};stroke-width:3px;stroke-linejoin:round">${esc(L.text)}</text>`;
+  }
+  return s + '</g>';
+}
+function hexA(hex, a) {
+  const h = hex.replace('#', '');
+  const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6);
+  const r = parseInt(n.slice(0, 2), 16) || 0, g = parseInt(n.slice(2, 4), 16) || 0, b = parseInt(n.slice(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+/* 一次绘制：屏幕与导出共用 */
+function drawScene(opts) {
+  opts = opts || {};
+  const W = opts.width, H = opts.height, a = opts.a, b = opts.b, rows = opts.rows;
+  const colMap = opts.colMap;
+  const g = [];
+  g.push(`<defs><filter id="glow" x="-30%" y="-60%" width="160%" height="260%">` +
+    `<feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>` +
+    `<pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="${TOK.xbox}" stroke-width="1"/></pattern></defs>`);
+  if (opts.bg !== false) g.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="${TOK.waveBg}"/>`);
+
+  /* 网格 */
+  const gs = Math.max(1, DOC.time.grid.step), gpx = gs * pxps();
+  let grid = '';
+  if (gpx >= 4) {
+    const sub = Math.max(1, Math.round(gs / (DOC.time.grid.sub || 1))), spx = sub * pxps();
+    if (spx >= 5) for (let t = Math.ceil(a / sub) * sub; t <= b; t += sub)
+      grid += `<line x1="${r2(xOf(t))}" y1="0" x2="${r2(xOf(t))}" y2="${H}" stroke="${TOK.gridMinor}" stroke-width="1"/>`;
+    for (let t = Math.ceil(a / gs) * gs; t <= b; t += gs)
+      grid += `<line x1="${r2(xOf(t))}" y1="0" x2="${r2(xOf(t))}" y2="${H}" stroke="${TOK.gridMajor}" stroke-width="1" opacity=".7"/>`;
+  }
+  for (const bd of DOC.bands) {
+    if (bd.t1 < a || bd.t0 > b) continue;
+    const x0 = xOf(Math.max(bd.t0, a)), x1 = xOf(Math.min(bd.t1, b));
+    grid += `<rect x="${r2(x0)}" y="0" width="${r2(Math.max(1, x1 - x0))}" height="${H}" fill="${hexA(bd.color || TOK.acc, .09)}"/>`;
+    if (bd.label && x1 - x0 > 40) grid += `<text x="${r2((x0 + x1) / 2)}" y="${H - 5}" text-anchor="middle" style="font-family:${TOK.ui};font-size:10px;fill:${TOK.faint};paint-order:stroke;stroke:${TOK.waveBg};stroke-width:3px;stroke-linejoin:round">${esc(bd.label)}</text>`;
+  }
+  g.push(`<g class="grid">${grid}</g>`);
+
+  /* 泳道 */
+  let lanes = '';
+  rows.forEach(r => {
+    if (r.type === 'group') return;
+    const sig = r.sig; if (!sig.visible) return;
+    lanes += laneBody(sig, r.y - opts.yOff, a, b, colMap[sig.id]);
+  });
+  g.push(`<g class="lanes">${lanes}</g>`);
+
+  /* overlay：游标 / 标记 */
+  let ov = '';
+  for (const mk of DOC.markers) {
+    if (mk.t < a || mk.t > b) continue;
+    const x = xOf(mk.t);
+    ov += `<line x1="${r2(x)}" y1="0" x2="${r2(x)}" y2="${H}" stroke="${mk.color || TOK.amber}" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>` +
+      `<path d="M${r2(x)} 1h9l-3 5h-6z" fill="${mk.color || TOK.amber}"/>` +
+      `<text x="${r2(x + 11)}" y="9" style="font-family:${TOK.mono};font-size:9.5px;fill:${mk.color || TOK.amber}">${esc(mk.label || '')}</text>`;
+  }
+  const cx = xOf(opts.cursorT != null ? opts.cursorT : V.cursorT);
+  if (cx >= 0 && cx <= W) ov += `<line x1="${r2(cx)}" y1="0" x2="${r2(cx)}" y2="${H}" stroke="${TOK.acc}" stroke-width="1" opacity=".55"/>`;
+  if (opts.hoverT != null) {
+    const hx = xOf(opts.hoverT);
+    if (hx >= 0 && hx <= W) ov += `<line x1="${r2(hx)}" y1="0" x2="${r2(hx)}" y2="${H}" stroke="${TOK.accText}" stroke-width="1" opacity=".35"/>`;
+  }
+  g.push(`<g class="overlay">${ov}</g>`);
+  return g.join('');
+}
+
+/* ---------- 5. 布局与刷新 ---------- */
+let firstRow = 0, rowMeta = [], rafId = 0;
+function layoutRows() {
+  const rows = [], list = DOC.lanes;
+  (function walk(nodes, depth) {
+    nodes.forEach(n => {
+      if (n.lanes) {
+        rows.push({ type: 'group', g: n, depth });
+        if (!n.collapsed) walk(n.lanes, depth + 1);
+      } else rows.push({ type: 'sig', sig: n, depth });
+    });
+  })(list, 0);
+  let y = 0;
+  rows.forEach(r => { r.h = r.type === 'group' ? 22 : V.lane; r.y = y; y += r.h; });
+  rowMeta = rows;
+  return rows;
+}
+function render() {
+  const rows = layoutRows();
+  const sc = $('#scroll');
+  const vpH = sc.clientHeight - 32;
+  const totalH = rows.reduce((s, r) => s + r.h, 0);
+  const need = totalPx();
+  const cw = V.nameW + valW() + Math.max(need, vpW());
+  const content = $('#content');
+  content.style.width = cw + 'px';
+
+  /* 行虚拟化 */
+  firstRow = 0;
+  let topPad = 0, botPad = 0, vis = rows;
+  if (rows.length > 160) {
+    const start = clamp(Math.floor(sc.scrollTop / Math.max(V.lane, 1)) - 6, 0, rows.length);
+    const cnt = Math.ceil(vpH / Math.max(V.lane, 1)) + 12;
+    let acc = 0, i = start, j = start;
+    for (; j < rows.length && j - i < cnt; j++) acc += rows[j].h;
+    for (let k = 0; k < i; k++) topPad += rows[k].h;
+    for (let k = j; k < rows.length; k++) botPad += rows[k].h;
+    vis = rows.slice(i, j);
+    vis.forEach(r => r.yLocal = r.y - topPad);
+  } else vis.forEach(r => r.yLocal = r.y);
+
+  /* 可视窗：坐标仍是全局 px（svg 铺满内容宽），只emit 窗口内的图元 */
+  const w = Math.max(need, vpW());
+  const padT = Math.ceil(80 / Math.max(pxps(), 1e-6)) + 1;
+  const a = clamp(tOf(sc.scrollLeft) - padT, DOC.time.t0, DOC.time.t1);
+  const b = clamp(tOf(sc.scrollLeft + vpW()) + padT, DOC.time.t0, DOC.time.t1);
+
+  /* 名列 + 值列 + 时间尺 */
+  const autoSave = autoN; autoN = 0;
+  const colMap = {}; allSigs().forEach(s => { colMap[s.id] = sigColor(s); });
+  autoN = autoSave;
+
+  let html = `<div class="ruler" style="width:${cw}px">` +
+    `<div class="corner" style="width:${V.nameW + valW()}px;flex:0 0 ${V.nameW + valW()}px">每格 ${fmtT(Math.max(1, DOC.time.grid.step))} · 0–${fmtT(DOC.time.t1 - DOC.time.t0)}</div>` +
+    `<div class="rulbody" style="width:${w}px">${rulerSvg(a, b, w)}</div></div>`;
+  if (topPad) html += `<div class="vspacer" style="height:${topPad}px"></div>`;
+  const curT = V.cursorT;
+  vis.forEach(r => {
+    if (r.type === 'group') {
+      html += `<div class="grow" data-g="${r.g.id}" style="height:${r.h}px;width:${cw}px;padding-left:${6 + r.depth * 8}px">` +
+        `<span class="tw" data-act="tw">${r.g.collapsed ? '▸' : '▾'}</span>${esc(r.g.group)}` +
+        `<span class="cnt">${allSigs(r.g.lanes).length}</span></div>`;
+      return;
+    }
+    const sig = r.sig, col = colMap[sig.id];
+    const v = valueAt(sig, curT);
+    html += `<div class="row${V.sel === sig.id ? ' hi' : ''}${sig.visible ? '' : ' off'}" data-row="${sig.id}" style="height:${r.h}px;width:${cw}px">` +
+      `<div class="nm-cell" style="width:${V.nameW}px;flex:0 0 ${V.nameW}px;left:0">` +
+      `<span class="dot" style="background:${col}"></span><span class="t">${esc(sig.name)}</span>` +
+      `<span class="k">${esc(kindTag(sig, true))}</span></div>`;
+    if (DOC.view.valueCol)
+      html += `<div class="vv-cell" data-fmtcell="1" title="双击切格式" style="width:${valW()}px;flex:0 0 ${valW()}px;left:${V.nameW}px;color:${isSpecial(v) ? TOK.faint : col}">${esc(fmtVal(sig, v))}</div>`;
+    html += `<div style="flex:0 0 ${w}px"></div></div>`;
+  });
+  if (botPad) html += `<div class="vspacer" style="height:${botPad}px"></div>`;
+  $('#rowbox').innerHTML = html;
+
+  /* 波形 SVG */
+  const svg = $('#waves');
+  const yOff = topPad;
+  const hgt = Math.max(1, totalH - yOff - botPad);
+  svg.style.left = (V.nameW + valW()) + 'px';
+  svg.style.top = (32 + yOff) + 'px';
+  svg.setAttribute('width', w); svg.setAttribute('height', hgt);
+  svg.setAttribute('viewBox', `0 0 ${r2(w)} ${r2(hgt)}`);
+  svg.innerHTML = drawScene({ width: w, height: hgt, a, b, rows: vis, yOff, colMap, hoverT: V.hoverT, bg: false });
+
+  $('#empty').hidden = !!allSigs().length;
+  renderTree(colMap); renderProps(); renderStatus();
+  try { $('#fileInput'); } catch (e) { }
+}
+function rulerSvg(a, b, w) {
+  const minPx = 68, minTicks = minPx / pxps();
+  const step = rulerStep(Math.max(minTicks, 1));
+  const gs = Math.max(1, DOC.time.grid.step);
+  let s = `<svg width="${w}" height="32" xmlns="http://www.w3.org/2000/svg" style="background:${TOK.waveBg}">`;
+  if (gs * pxps() >= 5) for (let t = Math.ceil(a / gs) * gs; t <= b; t += gs)
+    s += `<line x1="${r2(xOf(t))}" y1="26" x2="${r2(xOf(t))}" y2="32" stroke="${TOK.gridMajor}"/>`;
+  for (let t = Math.ceil(a / step) * step; t <= b; t += step) {
+    const x = r2(xOf(t));
+    s += `<line x1="${x}" y1="16" x2="${x}" y2="32" stroke="${TOK.faint}"/>` +
+      `<text x="${x + 3}" y="14" style="font-family:${TOK.mono};font-size:10.5px;fill:${TOK.muted}">${esc(fmtT(t, false))}</text>`;
+  }
+  s += `<line x1="0" y1="31.5" x2="${w}" y2="31.5" stroke="${TOK.line}"/></svg>`;
+  return s;
+}
+function anRange(sig) {
+  const vs = sig.events.map(e => e.v).filter(num);
+  if (!vs.length) return 'an';
+  const lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+  return (Math.round(lo * 100) / 100) + '–' + (Math.round(hi * 100) / 100) + (sig.unit ? ' ' + sig.unit : '');
+}
+/* 类型角标：树里窄（an），名列宽（模拟信号给量程） */
+function kindTag(sig, wide) {
+  if (sig.kind === 'bus') return (sig.bits || 1) + 'b';
+  if (sig.kind === 'clock') return 'clk';
+  if (sig.kind === 'analog') return wide ? anRange(sig) : 'an';
+  return '1b';
+}
+function renderTree(colMap) {
+  let h = '';
+  (function walk(nodes, depth) {
+    nodes.forEach(n => {
+      const pad = 4 + depth * 10;
+      if (n.lanes) {
+        h += `<div class="trow g" data-g="${n.id}" style="padding-left:${pad}px"><span data-act="tw">${n.collapsed ? '▸' : '▾'}</span>` +
+          `<span class="nm">${esc(n.group)}</span><span class="cnt" style="font-size:10px;color:var(--faint)">${allSigs(n.lanes).length}</span></div>`;
+        if (!n.collapsed) walk(n.lanes, depth + 1);
+      } else {
+        h += `<div class="trow${V.sel === n.id ? ' sel' : ''}${n.visible ? '' : ' off'}" data-sig="${n.id}" style="padding-left:${pad + 8}px">` +
+          `<span class="dot" style="background:${colMap[n.id]}"></span><span class="nm">${esc(n.name)}</span>` +
+          `<span class="kd">${kindTag(n, false)}</span>` +
+          `<button class="eye" data-act="vis" title="显隐">${n.visible ? '◉' : '◌'}</button></div>`;
+      }
+    });
+  })(DOC.lanes, 0);
+  $('#treeBody').innerHTML = h || `<div style="padding:14px;color:var(--faint);font-size:11.5px;line-height:1.8">还没有信号<br>点下面「＋ 信号」</div>`;
+  $('#treeCnt').textContent = allSigs().length;
+}
+function renderProps() {
+  const sig = V.sel ? sigById(V.sel) : null;
+  $('#propsCnt').textContent = '';   // 事件数在下面的「事件（N）」里，不重复标一遍
+  if (!sig) {
+    $('#propsBody').innerHTML = `<div class="hint">选中一个信号后这里可以改名称、类型、颜色、取值格式。<br><br>` +
+      `全局：<br>· 主题 <span class="mono">◐</span><br>· 值列开关<br>· 网格步长 <span class="mono">g</span><br>· 适配全部 <span class="mono">f</span></div>` +
+      `<div class="field" style="margin-top:12px"><span class="lab">值列</span><div class="trow2"><span class="lab">显示游标 A 处的取值</span>` +
+      `<button class="tog${DOC.view.valueCol ? ' on' : ''}" data-act="valcol" style="margin-left:auto"><i></i></button></div></div>`;
+    return;
+  }
+  const evs = sig.events.slice(0, 400).map(e => `<div class="inp" style="margin-bottom:3px;justify-content:space-between">` +
+    `<span>${esc(fmtT(e.t))}</span><span style="color:${isSpecial(e.v) ? 'var(--faint)' : 'var(--acc-text)'}">${esc(fmtVal(sig, e.v))}</span></div>`).join('');
+  $('#propsBody').innerHTML =
+    `<div class="field"><span class="lab">名称</span><div class="inp"><input data-f="name" value="${esc(sig.name)}"></div></div>` +
+    `<div class="field"><span class="lab">类型</span><div class="mini-seg">${KINDS.map(k =>
+      `<button data-kind="${k}" class="${sig.kind === k ? 'on' : ''}">${{ bit: '1 bit', bus: '总线', analog: '模拟', clock: '时钟' }[k]}</button>`).join('')}</div></div>` +
+    (sig.kind === 'bus' ? `<div class="field"><span class="lab">位宽</span><div class="inp"><input data-f="bits" type="number" min="1" max="64" value="${sig.bits}"></div></div>` : '') +
+    `<div class="field"><span class="lab">颜色</span><div class="swrow">` +
+    `<button class="sw auto${sig.color.mode === 'auto' ? ' on' : ''}" data-col="auto" title="自动通道色">A</button>` +
+    TOK.ch.map(c => `<button class="sw${sig.color.hex === c ? ' on' : ''}" data-col="${c}" style="background:${c}"></button>`).join('') +
+    `<span class="swsep"></span><input type="color" class="sw" value="${sig.color.mode === 'fixed' && sig.color.hex ? sig.color.hex : TOK.ch[0]}" data-col="pick" title="自定义取色器" style="padding:0">` +
+    `</div><div class="inp" style="margin-top:5px;justify-content:space-between"><span>${esc(sig.color.mode === 'fixed' ? sig.color.hex : 'auto')}</span></div></div>` +
+    (sig.kind === 'bus' ? `<div class="field"><span class="lab">取值格式</span><div class="mini-seg">${FMTS.map(f =>
+      `<button data-fmt="${f}" class="${sig.fmt === f ? 'on' : ''}">${f}</button>`).join('')}</div></div>` : '') +
+    `<div class="field"><div class="trow2"><span class="lab" style="margin:0">数值标签</span><button class="tog${sig.showValue ? ' on' : ''}" data-act="showval" style="margin-left:auto"><i></i></button></div></div>` +
+    `<div class="field"><span class="lab">事件（${sig.events.length}）</span>${evs || '<div class="hint">空 · 用画笔画一段</div>'}</div>` +
+    `<div class="field"><button class="btn" data-act="del-sig" style="width:100%;justify-content:center;color:var(--danger)">删除信号</button></div>`;
+}
+function renderStatus() {
+  const sig = V.sel ? sigById(V.sel) : null;
+  $('#status').innerHTML =
+    `<span class="chip${V.snap ? ' on' : ''}">吸附 ${fmtT(Math.max(1, DOC.time.grid.step))}</span>` +
+    `<span class="chip${DOC.view.valueCol ? ' on' : ''}" data-act="valcol" style="cursor:pointer">值列</span>` +
+    `<span class="chip">标记 ${DOC.markers.length}</span>` +
+    `<div class="sp"></div>` +
+    `<span class="mono">A ${fmtT(V.cursorT)}</span>` +
+    (V.hoverT != null ? `<span class="mono">Δ ${fmtT(V.hoverT - V.cursorT)}</span>` : '') +
+    (sig ? `<span class="mono" style="color:var(--acc-text)">${esc(sig.name)} = ${esc(fmtVal(sig, valueAt(sig, V.cursorT)))}</span>` : '') +
+    `<span>${allSigs().length} 信号</span>` +
+    `<span class="mono">${r2(V.zoom)} px/${DOC.time.unit}</span>`;
+}
+function renderValPick() {
+  const sig = V.sel ? sigById(V.sel) : null;
+  const kind = sig ? sig.kind : 'bit';
+  let h = '';
+  if (kind === 'bus') {
+    const cur = V.paintVal;
+    h = `<input id="vpIn" value="${esc(typeof cur === 'number' ? '0x' + cur.toString(16) : String(cur))}" title="总线取值，回车确认">` +
+      `<button data-v="x">x</button><button data-v="z">z</button>`;
+  } else if (kind === 'analog') {
+    h = `<input id="vpIn" value="${typeof cur0() === 'number' ? cur0() : '0.8'}" title="模拟采样值">`;
+  } else {
+    h = [0, 1, 'x', 'z'].map(v => `<button data-v="${v}" class="${V.paintVal === v ? 'on' : ''}">${v}</button>`).join('');
+  }
+  $('#valpick').innerHTML = h;
+  const i = $('#vpIn');
+  if (i) i.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { const s = V.sel ? sigById(V.sel) : null; const p = parseVal(i.value, s || { kind: 'bit' }); if (p != null) { V.paintVal = p; renderValPick(); } }
+  });
+}
+function cur0() { const s = V.sel ? sigById(V.sel) : null; return s && s.events.length ? s.events[s.events.length - 1].v : null; }
+function markDirty() { V.dirty = true; $('#dirtyDot').hidden = false; $('#docName').style.borderColor = 'var(--amber)'; }
+function clearDirty() { V.dirty = false; $('#dirtyDot').hidden = true; $('#docName').style.borderColor = ''; }
+let undoS = [], redoS = [];
+function snap() { undoS.push(JSON.stringify(DOC)); if (undoS.length > 80) undoS.shift(); redoS.length = 0; }
+function doUndo() { if (!undoS.length) return; redoS.push(JSON.stringify(DOC)); DOC = JSON.parse(undoS.pop()); afterLoad(); toast('已撤销'); }
+function doRedo() { if (!redoS.length) return; undoS.push(JSON.stringify(DOC)); DOC = JSON.parse(redoS.pop()); afterLoad(); toast('已重做'); }
+function afterLoad() {
+  DOC.view.theme = DOC.view.theme || 'light';
+  setTheme(DOC.view.theme, true);
+  V.sel = null; V.cursorT = clamp(V.cursorT, DOC.time.t0, DOC.time.t1);
+  fitAll(false);
+  render(); renderValPick(); markDirty();
+}
+
+/* ---------- 6. 视口 ---------- */
+function fitAll(keepZoom) {
+  const sc = $('#scroll');
+  if (!keepZoom) {
+    const span = Math.max(1, DOC.time.t1 - DOC.time.t0) / tpu();
+    V.zoom = clamp(span > 0 ? vpW() / span : 4, MINZOOM, MAXZOOM);
+  }
+  sc.scrollLeft = 0;
+}
+function fitSpan(a, b) {
+  const span = Math.max(1, (b - a) / tpu());
+  V.zoom = clamp(vpW() / span, MINZOOM, MAXZOOM);
+  render();
+  scrollEl().scrollLeft = Math.max(0, xOf(a) - 20);
+}
+function setTheme(t, silent) {
+  document.body.dataset.theme = t;
+  DOC.view.theme = t;
+  readTokens();
+  if (!silent) markDirty();
+  render();
+}
+
+/* ---------- 7. 交互 ---------- */
+const scrollEl = () => $('#scroll');
+function bindCanvas() {
+  const sc = scrollEl();
+  let pending = false;
+  const req = () => { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); };
+  sc.addEventListener('scroll', req, { passive: true });
+  new ResizeObserver(req).observe(sc);
+
+  sc.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    const rect = sc.getBoundingClientRect();
+    const px = Math.max(0, ev.clientX - rect.left - V.nameW - valW());
+    if (ev.shiftKey) { sc.scrollLeft += (ev.deltaY || ev.deltaX); return; }
+    const tAnchor = tOf(px + sc.scrollLeft);
+    const k = Math.pow(1.0016, -ev.deltaY * (ev.deltaMode === 1 ? 16 : 1));
+    V.zoom = clamp(V.zoom * k, MINZOOM, MAXZOOM);
+    /* 先重排（内容宽度随 zoom 变），再按锚点回写 scrollLeft，否则会被旧宽度截断 */
+    render();
+    sc.scrollLeft = Math.max(0, xOf(tAnchor) - px);
+  }, { passive: false });
+
+  let pan = null, paint = null, spaceDown = false;
+  const tickAt = ev => {
+    const rect = sc.getBoundingClientRect();
+    return tOf(ev.clientX - rect.left - V.nameW - valW() + sc.scrollLeft);
+  };
+  const laneAt = ev => {
+    const row = ev.target.closest ? ev.target.closest('[data-row]') : null;
+    return row ? row.getAttribute('data-row') : null;
+  };
+  sc.addEventListener('pointermove', ev => {
+    if (pan) { sc.scrollLeft = pan.sl - (ev.clientX - pan.x); sc.scrollTop = pan.st - (ev.clientY - pan.y); return; }
+    const t = snapT(tickAt(ev));
+    if (Math.abs((V.hoverT || 0) - t) > 0) { V.hoverT = clamp(t, DOC.time.t0, DOC.time.t1); req(); }
+    if (paint) paint.to = clamp(snapT(tickAt(ev)), DOC.time.t0, DOC.time.t1);
+    if (paint && V.sel) { previewPaint(); }
+  });
+  sc.addEventListener('pointerleave', () => { V.hoverT = null; req(); });
+  sc.addEventListener('pointerdown', ev => {
+    if (ev.button === 1 || spaceDown || V.tool === 'pan') {
+      pan = { x: ev.clientX, y: ev.clientY, sl: sc.scrollLeft, st: sc.scrollTop };
+      sc.setPointerCapture(ev.pointerId); ev.preventDefault(); return;
+    }
+    if (ev.button !== 0) return;
+    const row = ev.target.closest ? ev.target.closest('[data-row]') : null;
+    const sid = row && row.getAttribute('data-row');
+    const t = clamp(snapT(tickAt(ev)), DOC.time.t0, DOC.time.t1);
+    if (sid && V.sel !== sid) { V.sel = sid; renderValPick(); }
+    if (V.tool === 'paint' && sid) {
+      snap();
+      paint = { sig: sigById(sid), from: t, to: t };
+      sc.setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    } else {
+      V.cursorT = t; render();
+    }
+  });
+  const endPaint = ev => {
+    if (pan) { pan = null; return; }
+    if (!paint) return;
+    const sig = paint.sig;
+    let a = Math.min(paint.from, paint.to), b = Math.max(paint.from, paint.to);
+    const step = Math.max(1, DOC.time.grid.step);
+    if (sig.kind === 'analog') {
+      /* 模拟信号的「事件」就是采样点：拖过的话按网格每步插一个点，成一条折线 */
+      if (b === a) insertEdge(sig, a, typeof V.paintVal === 'number' ? V.paintVal : 0);
+      else for (let t = a; t <= b; t += step) insertEdge(sig, t, typeof V.paintVal === 'number' ? V.paintVal : 0);
+    } else {
+      if (b === a) b = Math.min(DOC.time.t1, a + step);
+      setRange(sig, a, b, V.paintVal);
+    }
+    paint = null; const pp = document.getElementById('paintprev'); if (pp) pp.remove();
+    render(); markDirty();
+  };
+  sc.addEventListener('pointerup', endPaint);
+  sc.addEventListener('pointercancel', endPaint);
+
+  function previewPaint() {
+    /* 拖动时先给一条即时反馈线，真正的写盘在 pointerup */
+    const tmp = document.getElementById('paintprev');
+    const x0 = xOf(Math.min(paint.from, paint.to)) + V.nameW + valW(), x1 = xOf(Math.max(paint.from, paint.to)) + V.nameW + valW();
+    const row = sc.querySelector(`[data-row="${paint.sig.id}"]`); if (!row) return;
+    const rect = row.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+    let el = tmp;
+    if (!el) { el = document.createElement('div'); el.id = 'paintprev'; el.style.cssText = 'position:absolute;z-index:6;pointer-events:none;border-radius:3px'; sc.appendChild(el); }
+    el.style.left = Math.min(x0, x1) + 'px';
+    el.style.top = (rect.top - sr.top + sc.scrollTop + 4) + 'px';
+    el.style.width = Math.max(3, Math.abs(x1 - x0)) + 'px';
+    el.style.height = (rect.height - 8) + 'px';
+    el.style.background = TOK.dark ? 'rgba(16,185,129,.22)' : 'rgba(14,159,110,.18)';
+  }
+  sc.addEventListener('dblclick', ev => {
+    const cell = ev.target.closest('[data-fmtcell]');
+    const row = ev.target.closest('[data-row]');
+    if (!row) return;
+    const sig = sigById(row.getAttribute('data-row')); if (!sig) return;
+    if (cell) { const i = FMTS.indexOf(sig.fmt); sig.fmt = FMTS[(i + 1) % FMTS.length]; if (sig.fmt === 'sym' && !sig.map.length) sig.fmt = 'hex'; render(); markDirty(); return; }
+    if (sig.kind === 'bus') {
+      const t = clamp(snapT(tickAt(ev)), DOC.time.t0, DOC.time.t1);
+      const s = prompt(`总线取值 @ ${fmtT(t)}（0x / 0b / 十进制 / x / z）`, fmtVal(sig, valueAt(sig, t)));
+      if (s != null) { const v = parseVal(s, sig); if (v == null) toast('认不出这个取值', true); else { snap(); insertEdge(sig, t, v); render(); markDirty(); } }
+    }
+  });
+
+  /* 树 / 属性面板 */
+  document.addEventListener('click', ev => {
+    const act = ev.target.closest('[data-act]'); const menu = ev.target.closest('[data-menu]');
+    $$('.menu.open').forEach(m => { if (!menu || m.id !== menu.getAttribute('data-menu')) m.classList.remove('open'); });
+    if (menu) { const m = document.getElementById(menu.getAttribute('data-menu')); if (m) { m.classList.toggle('open'); return; } }
+    if (!act) { if (!ev.target.closest('.menu')) $$('.menu').forEach(m => m.classList.remove('open')); return; }
+    const a = act.getAttribute('data-act');
+    if (a === 'tw') {
+      const host = act.closest('[data-g]'); if (!host) return;
+      const g = findGroup(host.getAttribute('data-g')); if (g) { g.collapsed = !g.collapsed; render(); markDirty(); }
+    } else if (a === 'vis') {
+      const row = act.closest('[data-sig]'); const s = row && sigById(row.getAttribute('data-sig'));
+      if (s) { s.visible = !s.visible; render(); markDirty(); }
+    } else if (a === 'valcol') { DOC.view.valueCol = !DOC.view.valueCol; render(); markDirty(); }
+    else if (a === 'showval') { const s = sigById(V.sel); if (s) { s.showValue = !s.showValue; render(); markDirty(); } }
+    else if (a === 'del-sig') { snap(); removeSig(V.sel); V.sel = null; afterLoad(); }
+  });
+  document.addEventListener('click', ev => {
+    const k = ev.target.closest('[data-kind]'); const c = ev.target.closest('[data-col]'); const v = ev.target.closest('[data-v]');
+    const f = ev.target.closest('[data-fmt]');
+    const tl = ev.target.closest('[data-tool]');
+    if (tl) {
+      const t = tl.getAttribute('data-tool');
+      if (t === 'snap') { V.snap = !V.snap; } else V.tool = t;
+      $$('#rail button').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === V.tool || (b.getAttribute('data-tool') === 'snap' && V.snap)));
+      render(); return;
+    }
+    const sig = sigById(V.sel);
+    if (f && sig) { sig.fmt = f.getAttribute('data-fmt'); render(); markDirty(); return; }
+    if (k && sig) {
+      snap(); sig.kind = k.getAttribute('data-kind');
+      /* 一根线一种画法（已定 2026-10-10）：类型是整条信号的属性，WaveJSON 的混排就靠这里整条改回去。
+         切进总线按 M0 定的默认重算格式：带取值表的先退 hex，位宽 ≤2 给 bin。 */
+      if (sig.kind === 'bus') { if (sig.fmt === 'sym') sig.fmt = 'hex'; if (sig.bits <= 2 && sig.fmt === 'hex') sig.fmt = 'bin'; }
+      render(); markDirty(); return;
+    }
+    if (c && sig) {
+      const cc = c.getAttribute('data-col');
+      snap();
+      if (cc === 'auto') sig.color = { mode: 'auto', hex: null };
+      else if (cc === 'pick') { /* input 自己会冒泡 change */ }
+      else sig.color = { mode: 'fixed', hex: cc };
+      render(); markDirty(); return;
+    }
+    if (v) { const raw = v.getAttribute('data-v'); V.paintVal = raw === 'x' || raw === 'z' ? raw : Number(raw); renderValPick(); return; }
+  });
+  document.addEventListener('change', ev => {
+    const sig = sigById(V.sel);
+    if (ev.target.matches('[data-col="pick"]') && sig) { snap(); sig.color = { mode: 'fixed', hex: ev.target.value }; render(); markDirty(); }
+    if (ev.target.matches('[data-f="name"]') && sig) { sig.name = ev.target.value || 'sig'; render(); markDirty(); }
+    if (ev.target.matches('[data-f="bits"]') && sig) { sig.bits = clamp(parseInt(ev.target.value, 10) || 1, 1, 64); render(); markDirty(); }
+  });
+  $('#docName').addEventListener('dblclick', () => {
+    const n = prompt('文档名', DOC.meta.name); if (n != null) { DOC.meta.name = n.slice(0, 60) || '未命名'; syncName(); markDirty(); }
+  });
+
+  /* 键盘 */
+  window.addEventListener('keydown', ev => {
+    if (ev.target && ev.target.closest && ev.target.closest('input,textarea,[contenteditable]')) return;
+    const k = ev.key;
+    if (k === 'Escape' && $('#wjrep').classList.contains('on')) { closeWjRep(); return; }
+    if (k === ' ' && !spaceDown) { spaceDown = true; sc.style.cursor = 'grab'; ev.preventDefault(); return; }
+    if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === 'z' && !ev.shiftKey) { ev.preventDefault(); doUndo(); return; }
+    if ((ev.ctrlKey || ev.metaKey) && (k.toLowerCase() === 'y' || (ev.shiftKey && k.toLowerCase() === 'z'))) { ev.preventDefault(); doRedo(); return; }
+    if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === 's') { ev.preventDefault(); doSave(k.shiftKey ? false : true, !!k.shiftKey); return; }
+    if ((ev.ctrlKey || ev.metaKey) && k.toLowerCase() === 'o') { ev.preventDefault(); $('#fileInput').click(); return; }
+    if (ev.ctrlKey || ev.metaKey) return;
+    if (k === 'f') { fitAll(false); render(); }
+    else if (k === 'z') { const s = sigById(V.sel); const sp = s && eventSpan(s); if (sp) fitSpan(sp[0], sp[1]); else fitAll(false); }
+    else if (k === 'g') { const steps = [1, 2, 5, 10, 20, 50, 100]; const i = steps.indexOf(DOC.time.grid.step); DOC.time.grid.step = steps[(i + 1) % steps.length]; render(); markDirty(); }
+    else if (k === 'b') { V.tool = 'paint'; $$('#rail button').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === 'paint' || b.getAttribute('data-tool') === 'snap')); }
+    else if (k === 'v') { V.tool = 'select'; $$('#rail button').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === 'select' || b.getAttribute('data-tool') === 'snap')); }
+    else if (k === 'c') { V.tool = 'cursor'; $$('#rail button').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === 'cursor' || b.getAttribute('data-tool') === 'snap')); }
+    else if (k === 'm') { snap(); DOC.markers.push({ id: uid('m'), t: V.cursorT, label: 'M' + (DOC.markers.length + 1), color: TOK.amber }); render(); markDirty(); }
+    else if (k === '[' || k === ']') {
+      const ms = DOC.markers.slice().sort((a, b) => a.t - b.t); if (!ms.length) return;
+      const dir = k === ']' ? 1 : -1;
+      const nxt = dir > 0 ? ms.find(m => m.t > V.cursorT) : ms.slice().reverse().find(m => m.t < V.cursorT);
+      if (nxt) { V.cursorT = nxt.t; ensureVisible(nxt.t); render(); }
+    }
+    else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+      const step = Math.max(1, DOC.time.grid.step) * (ev.altKey ? 1 : (ev.shiftKey ? 10 : 1));
+      V.cursorT = clamp(V.cursorT + (k === 'ArrowRight' ? step : -step), DOC.time.t0, DOC.time.t1);
+      ensureVisible(V.cursorT); render();
+    }
+    else if (k === 'Delete' || k === 'Backspace') { const s = sigById(V.sel); if (s) { snap(); removeSig(s.id); V.sel = null; afterLoad(); } }
+  });
+  window.addEventListener('keyup', ev => { if (ev.key === ' ') { spaceDown = false; sc.style.cursor = ''; } });
+}
+function ensureVisible(t) {
+  const sc = scrollEl(), x = xOf(t), vw = vpW();
+  if (x - sc.scrollLeft < 40) sc.scrollLeft = Math.max(0, x - 40);
+  else if (x - sc.scrollLeft > vw - 40) sc.scrollLeft = x - vw + 40;
+}
+function findGroup(id, list) {
+  list = list || DOC.lanes;
+  for (const n of list) { if (n.lanes) { if (n.id === id) return n; const f = findGroup(id, n.lanes); if (f) return f; } }
+  return null;
+}
+function removeSig(id, list) {
+  list = list || DOC.lanes;
+  for (let i = 0; i < list.length; i++) {
+    const n = list[i];
+    if (n.lanes) { if (removeSig(id, n.lanes)) return true; }
+    else if (n.id === id) { list.splice(i, 1); return true; }
+  }
+  return false;
+}
+function addSig(kind) {
+  snap();
+  const n = allSigs().length;
+  const sig = newSig(kind === 'clock' ? 'clk' : kind === 'bus' ? 'bus' + n : 'sig' + n, kind,
+    kind === 'bus' ? { bits: 8, fmt: 'hex' } : {});
+  if (kind === 'clock') {
+    const s = Math.max(1, DOC.time.grid.step);
+    for (let t = DOC.time.t0, i = 0; t <= DOC.time.t1; t += s, i++) sig.events.push({ t, v: i % 2 ? 1 : 0 });
+  }
+  DOC.lanes.push(sig); V.sel = sig.id;
+  render(); renderValPick(); markDirty();
+}
+
+/* ---------- 8. .wy 读写 ---------- */
+function cleanSig(s) {
+  const o = { name: s.name, kind: s.kind };
+  if (s.kind === 'bus') o.bits = s.bits;
+  if (s.color && s.color.mode !== 'auto') o.color = { mode: s.color.mode, hex: s.color.hex };
+  if (s.stroke && s.stroke.style !== 'solid') o.stroke = s.stroke;
+  if (s.fmt && s.fmt !== defFmt(s)) o.fmt = s.fmt;
+  if (s.map && s.map.length) o.map = s.map;
+  if (s.events.length) o.events = s.events.map(e => [e.t, e.v]);
+  if (s.labels && s.labels.length) o.labels = s.labels;
+  if (!s.showValue) o.showValue = false;
+  if (s.showGlitch) o.showGlitch = true;
+  if (!s.visible) o.visible = false;
+  if (s.unit) o.unit = s.unit;
+  /* WaveJSON 带进来、V2 暂时画不了的东西（node / phase / 未知键 / head-foot-config）原样存着，
+     回 V1 时还原。这是「存配置、算视图」的延续：不猜、不丢、也不假装已经支持。 */
+  if (s.wj) o.wj = s.wj;
+  if (s.nodes && s.nodes.length) o.nodes = s.nodes;
+  return o;
+}
+function lanesOut(list) {
+  return (list || DOC.lanes).map(n => n.lanes
+    ? Object.assign({ group: n.group }, n.collapsed ? { collapsed: true } : {}, { lanes: lanesOut(n.lanes) })
+    : cleanSig(n));
+}
+function toWy() {
+  const d = {
+    wy: 1,
+    meta: Object.assign({}, DOC.meta),
+    time: { unit: DOC.time.unit, perUnit: DOC.time.perUnit, t0: DOC.time.t0, t1: DOC.time.t1, grid: { step: DOC.time.grid.step, sub: DOC.time.grid.sub } },
+    lanes: lanesOut()
+  };
+  if (DOC.wj) d.wj = DOC.wj;
+  if (DOC.edges.length) d.edges = DOC.edges;
+  if (DOC.bands.length) d.bands = DOC.bands;
+  if (DOC.markers.length) d.markers = DOC.markers;
+  d.view = { theme: DOC.view.theme, valueCol: DOC.view.valueCol, cursors: [{ name: 'A', t: V.cursorT }], fmtDefault: DOC.view.fmtDefault };
+  if (DOC.decodes.length) d.decodes = DOC.decodes;
+  if (DOC.scenes.length) d.scenes = DOC.scenes;
+  if (DOC.graphs.length) d.graphs = DOC.graphs;
+  return d;
+}
+function sigFrom(o) {
+  const s = newSig(o.name, o.kind, {
+    bits: o.bits, color: o.color, stroke: o.stroke, fmt: o.fmt, map: o.map, labels: o.labels,
+    showValue: o.showValue, showGlitch: o.showGlitch, unit: o.unit
+  });
+  s.visible = o.visible !== false;
+  s.wj = o.wj || null; s.nodes = o.nodes || null;
+  s.events = (o.events || []).map(e => Array.isArray(e) ? { t: e[0], v: e[1] } : { t: e.t, v: e.v }).filter(e => isFinite(e.t));
+  normalize(s);
+  return s;
+}
+function lanesIn(list, out) {
+  (list || []).forEach(n => {
+    if (n.group != null) { const g = newGroup(n.group, []); g.collapsed = !!n.collapsed; lanesIn(n.lanes, g.lanes); out.push(g); }
+    else if (n.name != null) out.push(sigFrom(n));
+  });
+  return out;
+}
+function fromWy(o) {
+  if (!o || typeof o !== 'object') throw new Error('不是 .wy 文档');
+  if (o.wy !== 1) throw new Error('不支持的 .wy 版本：' + o.wy);
+  const d = newDoc();
+  d.meta = Object.assign(d.meta, o.meta || {});
+  if (o.time) {
+    d.time.unit = o.time.unit || 'ns'; d.time.perUnit = o.time.perUnit || 1;
+    d.time.t0 = Math.round(o.time.t0 || 0); d.time.t1 = Math.max(d.time.t0 + 1, Math.round(o.time.t1 || 200));
+    d.time.grid = { step: Math.max(1, Math.round((o.time.grid || {}).step || 5)), sub: Math.max(1, Math.round((o.time.grid || {}).sub || 5)) };
+  }
+  lanesIn(o.lanes, d.lanes);
+  d.edges = o.edges || []; d.bands = o.bands || []; d.markers = o.markers || [];
+  d.view = Object.assign(d.view, o.view || {});
+  d.decodes = o.decodes || []; d.scenes = o.scenes || []; d.graphs = o.graphs || [];
+  d.wj = o.wj || null;
+  return d;
+}
+function loadWyText(txt, name) {
+  let o; try { o = JSON.parse(txt); } catch (e) { toast('.wy 不是合法 JSON：' + e.message, true); return false; }
+  try { DOC = fromWy(o); } catch (e) { toast(e.message, true); return false; }
+  if (name) { DOC.meta.name = name.replace(/\.(wy|json)$/i, ''); }
+  undoS.length = redoS.length = 0;
+  afterLoad(); clearDirty(); syncName();
+  toast('已打开 ' + (name || DOC.meta.name) + ' · ' + allSigs().length + ' 信号');
+  return true;
+}
+function syncName() { $('#docName').textContent = DOC.meta.name + '.wy'; document.title = DOC.meta.name + ' · WaveYes'; }
+function wyText() { return JSON.stringify(toWy(), null, 1); }
+
+const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const WY_PNG_KEYWORD = 'WaveYes';
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(bytes) { let c = 0xffffffff; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function pngInsertITXt(bytes, keyword, text) {
+  if (bytes.length < 8 || !PNG_SIG.every((b, i) => bytes[i] === b)) throw new Error('不是 PNG 文件');
+  const kw = new TextEncoder().encode(keyword), tx = new TextEncoder().encode(text);
+  const data = new Uint8Array(kw.length + 5 + tx.length);
+  data.set(kw, 0); data.set(tx, kw.length + 5);
+  const chunk = new Uint8Array(12 + data.length), cdv = new DataView(chunk.buffer);
+  cdv.setUint32(0, data.length); chunk.set([0x69, 0x54, 0x58, 0x74], 4); chunk.set(data, 8);
+  cdv.setUint32(8 + data.length, crc32(chunk.subarray(4, 8 + data.length)));
+  let off = 8, insertAt = -1;
+  while (off + 8 <= bytes.length) {
+    const len = (bytes[off] << 24) | (bytes[off + 1] << 16) | (bytes[off + 2] << 8) | bytes[off + 3];
+    if (bytes[off + 4] === 0x49 && bytes[off + 5] === 0x45 && bytes[off + 6] === 0x4e && bytes[off + 7] === 0x44) { insertAt = off; break; }
+    off += 12 + len;
+  }
+  if (insertAt < 0) throw new Error('PNG 缺少 IEND');
+  const out = new Uint8Array(bytes.length + chunk.length);
+  out.set(bytes.subarray(0, insertAt), 0); out.set(chunk, insertAt); out.set(bytes.subarray(insertAt), insertAt + chunk.length);
+  return out;
+}
+function pngExtractWy(bytes) {
+  if (bytes.length < 8 || !PNG_SIG.every((b, i) => bytes[i] === b)) return null;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let off = 8;
+  while (off + 8 <= bytes.length) {
+    const len = dv.getUint32(off);
+    const type = String.fromCharCode(bytes[off + 4], bytes[off + 5], bytes[off + 6], bytes[off + 7]);
+    if (type === 'IEND') break;
+    if (type === 'iTXt' && len > 0) {
+      const body = bytes.subarray(off + 8, off + 8 + len), z = body.indexOf(0);
+      if (z >= 0 && new TextDecoder('latin1').decode(body.subarray(0, z)) === WY_PNG_KEYWORD) {
+        let p = z + 1; while (p < body.length && body[p] !== 0) p++;      /* 压缩标志 */
+        p++; while (p < body.length && body[p] !== 0) p++;                 /* 压缩方法 */
+        p++; while (p < body.length && body[p] !== 0) p++;                 /* 语言标签 */
+        p++; while (p < body.length && body[p] !== 0) p++;                 /* 翻译关键字 */
+        try { return new TextDecoder().decode(body.subarray(p + 1)); } catch (e) { return null; }
+      }
+    }
+    off += 12 + len;
+  }
+  return null;
+}
+function b64FromUTF8(str) {
+  const bytes = new TextEncoder().encode(str); let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function utf8FromB64(b) { const bin = atob(b), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return new TextDecoder().decode(out); }
+function svgWithMeta(str, json) {
+  const i = str.indexOf('>');
+  return str.slice(0, i + 1) + `<metadata data-waveyes="1">${b64FromUTF8(json)}</metadata>` + str.slice(i + 1);
+}
+function svgExtractWy(text) {
+  const m = /<metadata[^>]*data-waveyes[^>]*>([\s\S]*?)<\/metadata>/.exec(text);
+  if (!m) return null; try { return utf8FromB64(m[1].replace(/\s+/g, '')); } catch (e) { return null; }
+}
+
+/* 导出图 = 所见即所得：可视窗 + 名列 / 值列 / 时间尺，与屏幕共用 drawScene，全部字面量色 */
+function buildExportSvg(o) {
+  o = o || {};
+  const rows = layoutRows();
+  const totalH = rows.reduce((s, r) => s + r.h, 0);
+  const nameW = V.nameW, vw = valW();
+  /* 默认「所见即所得」：宽度 = 当前可视区，时刻范围 = 当前滚动位置。
+     M4 的场景导出靠 o.width / o.a / o.b 覆盖，不必依赖窗口尺寸。 */
+  const w = Math.max(1, o.width != null ? o.width : vpW());
+  const sc = scrollEl();
+  const a = o.a != null ? o.a : tOf(sc.scrollLeft);
+  const b = o.b != null ? o.b : tOf(sc.scrollLeft + w);
+  const sl = o.a != null ? xOf(a) : sc.scrollLeft;
+  const W = nameW + vw + w, H = 32 + totalH;
+  autoN = 0; const colMap = {}; allSigs().forEach(s => { colMap[s.id] = sigColor(s); });
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${r2(W)}" height="${r2(H)}" viewBox="0 0 ${r2(W)} ${r2(H)}">`;
+  s += `<rect width="${r2(W)}" height="${r2(H)}" fill="${TOK.waveBg}"/>`;
+  /* 时间尺 + 波形：整体左移 scrollLeft，坐标与屏幕一致 */
+  s += `<g transform="translate(${r2(nameW + vw - sl)},0)">` + drawRulerSvgInner(a, b, W + sl) + '</g>';
+  s += `<g transform="translate(${r2(nameW + vw - sl)},32)">` +
+    drawScene({ width: W + sl, height: totalH, a, b, rows, yOff: 0, colMap, cursorT: V.cursorT, bg: false }) + '</g>';
+  s += `<line x1="0" y1="31.5" x2="${r2(W)}" y2="31.5" stroke="${TOK.line}"/>`;
+  /* 名列 + 值列（后画，压住从底下穿过的波形） */
+  let cells = '';
+  rows.forEach(r => {
+    const y = 32 + r.y;
+    if (r.type === 'group') {
+      cells += `<rect x="0" y="${y}" width="${r2(W)}" height="${r.h}" fill="${TOK.dark ? 'rgba(255,255,255,.03)' : 'rgba(16,26,46,.03)'}"/>` +
+        `<text x="8" y="${y + 15}" style="font-family:${TOK.ui};font-size:11.5px;fill:${TOK.muted}">${esc(r.g.group)}</text>`;
+      return;
+    }
+    const sig = r.sig, col = colMap[sig.id];
+    cells += `<line x1="0" y1="${y + r.h}" x2="${r2(W)}" y2="${y + r.h}" stroke="${TOK.gridMinor}"/>` +
+      `<rect x="0" y="${y}" width="${nameW}" height="${r.h}" fill="${TOK.waveBg}"/>` +
+      `<rect x="${nameW}" y="${y}" width="${vw}" height="${r.h}" fill="${TOK.waveBg}"/>` +
+      `<circle cx="12" cy="${y + r.h / 2}" r="4" fill="${col}"/>` +
+      `<text x="22" y="${y + r.h / 2 + 4}" style="font-family:${TOK.ui};font-size:12px;fill:${TOK.text}">${esc(sig.name)}</text>`;
+    if (vw) {
+      const v = valueAt(sig, V.cursorT);
+      cells += `<text x="${nameW + vw - 8}" y="${y + r.h / 2 + 4}" text-anchor="end" style="font-family:${TOK.mono};font-size:11.5px;fill:${isSpecial(v) ? TOK.faint : col}">${esc(fmtVal(sig, v))}</text>`;
+    }
+  });
+  cells += `<line x1="${nameW}" y1="32" x2="${nameW}" y2="${r2(H)}" stroke="${TOK.line}"/>`;
+  if (vw) cells += `<line x1="${nameW + vw}" y1="32" x2="${nameW + vw}" y2="${r2(H)}" stroke="${TOK.line}"/>`;
+  s += cells + '</svg>';
+  return { str: s, w: W, h: H };
+}
+function drawRulerSvgInner(a, b, w) {
+  const step = rulerStep(Math.max(68 / pxps(), 1)), gs = Math.max(1, DOC.time.grid.step);
+  let s = '';
+  if (gs * pxps() >= 5) for (let t = Math.ceil(a / gs) * gs; t <= b; t += gs) s += `<line x1="${r2(xOf(t))}" y1="26" x2="${r2(xOf(t))}" y2="32" stroke="${TOK.gridMajor}"/>`;
+  for (let t = Math.ceil(a / step) * step; t <= b; t += step)
+    s += `<line x1="${r2(xOf(t))}" y1="16" x2="${r2(xOf(t))}" y2="32" stroke="${TOK.faint}"/>` +
+      `<text x="${r2(xOf(t)) + 3}" y="14" style="font-family:${TOK.mono};font-size:10.5px;fill:${TOK.muted}">${esc(fmtT(t, false))}</text>`;
+  return s;
+}
+
+function download(name, blob) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+async function doSave(quick, asNew) {
+  const txt = wyText();
+  if (quick && !asNew && window.showSaveFilePicker && !V.fileHandle) {
+    try { V.fileHandle = await window.showSaveFilePicker({ suggestedName: DOC.meta.name + '.wy', types: [{ description: 'WaveYes', accept: { 'application/json': ['.wy'] } }] }); }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  if (quick && !asNew && V.fileHandle) {
+    try { const w = await V.fileHandle.createWritable(); await w.write(txt); await w.close(); clearDirty(); toast('已保存 ' + DOC.meta.name + '.wy'); return; }
+    catch (e) { V.fileHandle = null; toast('写入失败，改用下载：' + e.message, true); }
+  }
+  download(DOC.meta.name + '.wy', new Blob([txt], { type: 'application/json' })); clearDirty();
+}
+function exportSvg() {
+  const ex = buildExportSvg();
+  download(DOC.meta.name + '.svg', new Blob([svgWithMeta(ex.str, wyText())], { type: 'image/svg+xml;charset=utf-8' }));
+}
+/* 位图导出：SVG → canvas → PNG，并把 .wy 原文塞进 iTXt（图片拖回来能继续编辑） */
+function pngBlob(scale, o) {
+  const ex = buildExportSvg(o);
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([ex.str], { type: 'image/svg+xml;charset=utf-8' }));
+    img.onload = async () => {
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(ex.w * scale); cv.height = Math.round(ex.h * scale);
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = TOK.waveBg; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      cv.toBlob(async b => {
+        if (!b) { rej(new Error('toBlob 返回空')); return; }
+        try { res(new Blob([pngInsertITXt(new Uint8Array(await b.arrayBuffer()), WY_PNG_KEYWORD, wyText())], { type: 'image/png' })); }
+        catch (e) { res(b); }
+      }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('SVG 光栅化失败（图太宽？）')); };
+    img.src = url;
+  });
+}
+async function exportPng(scale) {
+  try {
+    const blob = await pngBlob(scale);
+    download(DOC.meta.name + (scale > 2 ? '@' + scale + 'x' : '') + '.png', blob);
+  } catch (e) { toast('PNG 生成失败：' + e.message, true); }
+}
+
+/* ---------- 9. 拖放 / 文件输入 ---------- */
+function bindFiles() {
+  const inp = $('#fileInput');
+  inp.addEventListener('change', async () => { if (inp.files && inp.files[0]) await readFile(inp.files[0]); inp.value = ''; });
+  const hasFile = ev => Array.from((ev.dataTransfer && ev.dataTransfer.types) || []).includes('Files');
+  window.addEventListener('dragover', ev => { if (hasFile(ev)) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'copy'; $('#dropmask').classList.add('on'); } });
+  window.addEventListener('dragleave', ev => { if (!ev.relatedTarget) $('#dropmask').classList.remove('on'); });
+  window.addEventListener('drop', async ev => {
+    if (!hasFile(ev)) return;
+    ev.preventDefault(); $('#dropmask').classList.remove('on');
+    for (const f of Array.from(ev.dataTransfer.files || [])) { await readFile(f); break; }
+  });
+}
+async function readFile(f) {
+  const name = f.name || '';
+  try {
+    if (/\.(wy|wave|json|txt)$/i.test(name)) { loadAnyText(await f.text(), name); return; }
+    if (/\.svg$/i.test(name)) { const t = await f.text(); const j = svgExtractWy(t); if (j && loadWyText(j, name)) return; toast('这个 SVG 里没有内嵌的 .wy 数据', true); return; }
+    if (/\.png$/i.test(name)) {
+      const b = new Uint8Array(await f.arrayBuffer()); const j = pngExtractWy(b);
+      if (j && loadWyText(j, name)) return;
+      toast('这个 PNG 里没有内嵌的 .wy 数据；V1 的 WaveJSON 图请用「打开…」或 V1 顶栏的 V2 按钮带过来', true); return;
+    }
+    if (/\.(vcd|fst|waved)$/i.test(name)) { toast('VCD / FST / .waved 导入排在 M5、M8，现在还打不开', true); return; }
+    toast('不认这个文件：' + name, true);
+  } catch (e) { toast('读取失败：' + e.message, true); }
+}
+
+/* ---------- 10. 示例文档 ---------- */
+function demoDoc() {
+  const d = newDoc();
+  d.meta.name = 'spi_master'; d.time.t1 = 200; d.time.grid = { step: 5, sub: 5 };
+  const S = (n, k, o) => { const s = newSig(n, k, o); return s; };
+  const cs = S('cs_n', 'bit'); [[0, 1], [52, 0], [140, 1]].forEach(e => cs.events.push({ t: e[0], v: e[1] }));
+  const clk = S('sclk', 'clock'); for (let t = 60, i = 0; t <= 132; t += 6, i++) clk.events.push({ t, v: i % 2 ? 0 : 1 });
+  const mosi = S('mosi', 'bit', { color: { mode: 'fixed', hex: '#B45309' } });
+  [[0, 0], [58, 1], [66, 0], [70, 1], [82, 0], [94, 1], [106, 0], [118, 1], [130, 0]].forEach(e => mosi.events.push({ t: e[0], v: e[1] }));
+  mosi.labels.push({ t: 66, text: '26 ps 级毛刺 · 硬件滤除，这里原样保留', color: TOK.amber });
+  const miso = S('miso', 'bit', { color: { mode: 'fixed', hex: '#059669' } });
+  [[0, 0], [88, 1], [112, 0]].forEach(e => miso.events.push({ t: e[0], v: e[1] }));
+  const addr = S('addr', 'bus', { bits: 8, fmt: 'hex', color: { mode: 'fixed', hex: '#0284C7' } });
+  [[52, 0x12], [82, 0x34], [130, 'x']].forEach(e => addr.events.push({ t: e[0], v: e[1] }));
+  const st = S('state', 'bus', { bits: 3, fmt: 'sym' });
+  st.map = [{ v: 0, name: 'IDLE', short: 'IDL', color: '#64748B' }, { v: 1, name: 'START' }, { v: 2, name: 'XFER' },
+    { v: 3, name: 'WAIT' }, { v: 4, name: 'DONE' }, { v: 7, name: 'ERR', color: '#DC2626' }];
+  [[0, 0], [50, 1], [60, 2], [120, 3], [142, 4], [160, 0]].forEach(e => st.events.push({ t: e[0], v: e[1] }));
+  const dac = S('vref', 'analog', { unit: 'V', color: { mode: 'fixed', hex: '#7C3AED' } });
+  [[0, 0.4], [40, 1.2], [80, 2.7], [120, 1.9], [160, 3.1], [200, 2.2]].forEach(e => dac.events.push({ t: e[0], v: e[1] }));
+  const irq = S('irq', 'bit', { color: { mode: 'fixed', hex: '#DB2777' } });
+  [[0, 0], [152, 1], [158, 0]].forEach(e => irq.events.push({ t: e[0], v: e[1] }));
+  const g = newGroup('SPI', [cs, clk, mosi, miso, addr]);
+  d.lanes = [g, st, dac, irq];
+  d.bands = [{ t0: 52, t1: 140, label: '传输窗口' }];
+  d.markers = [{ id: uid('m'), t: 52, label: 'M1 CS↓', color: '#B45309' }, { id: uid('m'), t: 96, label: 'M2', color: '#DB2777' }];
+  d.view.cursors = [{ name: 'A', t: 96 }];
+  return d;
+}
+
+/* ---------- 10b. WaveJSON 互通（M1） ---------- */
+/* 一个 WaveJSON 网格步 = 多少 tick。取 20 而不是 10：phase 常用的 0.25 / 0.5 偏移、
+   u / d 毛刺的格内 1/4 与 3/4 位置，都得落在整数 tick 上（事件表的 t 是整数）。 */
+const WJC = 20;
+const WJ_DATA_CH = '=23456789';
+const WJ_DIGIT_COLOR = { '2': '#FFFFFF', '3': '#FFD500', '4': '#FF7F00', '5': '#0080FF', '6': '#00BFBF', '7': '#00BF00', '8': '#BF00BF', '9': '#FF007F' };
+
+/* 无求值的宽松解析：字符串感知扫描——剥 // 与块注释、补免引号键、单引号串转双引号、
+   丢尾逗号——最后交回 JSON.parse。逐字移植自 V1 index.html 的同名函数，改一边要同步另一边；
+   hash 分享链接与拖进来的文件都是**不可信输入**，绝不用 Function() 求值。 */
+function parseLoose(text) {
+  let out = '';
+  let expectKey = false;
+  let i = 0;
+  const n = text.length;
+  while (i < n) {
+    const c = text[i];
+    if (c === '/' && text[i + 1] === '/') { while (i < n && text[i] !== '\n') i++; continue; }
+    if (c === '/' && text[i + 1] === '*') {
+      i += 2;
+      while (i < n && !(text[i] === '*' && text[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      out += '"';
+      i++;
+      while (i < n && text[i] !== c) {
+        if (text[i] === '\\') { out += text[i] + (text[i + 1] || ''); i += 2; continue; }
+        out += text[i] === '"' ? '\\"' : text[i];
+        i++;
+      }
+      out += '"';
+      i++;
+      expectKey = false;
+      continue;
+    }
+    if (c === ',') {
+      let j = i + 1;
+      while (j < n && /\s/.test(text[j])) j++;
+      if (text[j] === '}' || text[j] === ']') { i++; continue; }
+      out += c;
+      i++;
+      expectKey = true;
+      continue;
+    }
+    if (c === '{' || c === '[') {
+      out += c;
+      i++;
+      if (c === '{') expectKey = true;
+      continue;
+    }
+    if (expectKey && /[A-Za-z_$]/.test(c)) {
+      const m = /^[A-Za-z_$][\w$]*\s*:/.exec(text.slice(i, i + 128));
+      if (m) {
+        out += '"' + m[0].replace(/\s*:/, '') + '":';
+        i += m[0].length;
+        expectKey = false;
+        continue;
+      }
+    }
+    expectKey = expectKey && /\s/.test(c);
+    out += c;
+    i++;
+  }
+  return JSON.parse(out);
+}
+
+function wjKindOf(wave) {
+  if (/[pnPN]/.test(wave)) return 'clock';
+  if (new RegExp('[' + WJ_DATA_CH + ']').test(wave)) return 'bus';
+  return 'bit';
+}
+function wjNewRep() { return { drop: [], merge: [], note: [] }; }
+function wjRepCount(rep) { return rep.drop.length + rep.merge.length + rep.note.length; }
+function wjRepText(rep) {
+  const sec = (t, a) => (a.length ? t + '：\n  · ' + a.join('\n  · ') + '\n' : '');
+  return (sec('丢弃', rep.drop) + sec('合并 / 改写', rep.merge) + sec('登记', rep.note)).trim() || '无损失';
+}
+
+/* 一条 lane（或一个分组）→ V2 的行。返回 sig / group，同时把有损项记进 rep。 */
+function wjEntryToLane(e, rep, depth) {
+  if (Array.isArray(e)) {
+    const g = newGroup(typeof e[0] === 'string' ? e[0] : '');
+    e.slice(1).forEach(x => { const l = wjEntryToLane(x, rep, depth + 1); if (l) g.lanes.push(l); });
+    return g;
+  }
+  if (!e || typeof e !== 'object') { rep.drop.push('一个空行 / 非对象条目（WaveJSON 里 `{}` 或裸字符串）'); return null; }
+  const wave = typeof e.wave === 'string' ? e.wave : '';
+  const kind = wjKindOf(wave);
+  const sig = newSig(String(e.name == null ? '' : e.name), kind, {});
+  if (e.name == null || String(e.name) === '') sig.name = '';   // newSig 给空名兜了个 'sig'，导入要按 WaveDrom 留空
+  const who = sig.name || '（无名）';
+  const period = e.period != null ? (+e.period || 1) : 1;
+  const cell = Math.max(1, Math.round(WJC * period));
+  const phase = e.phase != null ? (+e.phase || 0) : 0;
+  const off = -Math.round(phase * cell);   // V1 render-modern.js: x = -phase × 格宽，正 phase 是把波形往前挪
+  const data = Array.isArray(e.data) ? e.data.map(String) : (typeof e.data === 'string' ? e.data.split(/\s+/) : []);
+  if (period !== 1) sig.wj = Object.assign(sig.wj || {}, { period: period });
+  if (phase) sig.wj = Object.assign(sig.wj || {}, { phase: phase });
+
+  let cur = 'x', di = -1, gap = 0, last = null, excl = 0, weak = 0;
+  const labels = [];                       // {k, lab} —— 数据格，第二遍再定值
+  const setAt = (t, v) => { if (v !== cur) { sig.events.push({ t: t, v: v }); cur = v; } };
+  const half = Math.max(1, Math.round(cell / 2)), q = Math.max(1, Math.round(cell / 4));
+  /* 一个大写字形 → 事件。返回 false 表示「不是我能直接落事件的字符」（数据格交调用方）。
+     大小写按 V1 render-modern.js 的口径：H/L 是带箭头的 1/0，X/Z 与 x/z 同值（X 只是画得更实）。 */
+  function apply(ch, a) {
+    if (ch === '0' || ch === 'l' || ch === 'L') { setAt(a, 0); return true; }
+    if (ch === '1' || ch === 'h' || ch === 'H') { setAt(a, 1); return true; }
+    if (ch === 'x' || ch === 'X') { setAt(a, 'x'); return true; }
+    if (ch === 'z' || ch === 'Z') { setAt(a, 'z'); return true; }
+    if (ch === 'p' || ch === 'P') { setAt(a, 1); setAt(a + half, 0); return true; }
+    if (ch === 'n' || ch === 'N') { setAt(a, 0); setAt(a + half, 1); return true; }
+    if (ch === 'u' || ch === 'd') { const back = cur, v = ch === 'u' ? 1 : 0; setAt(a + q, v); setAt(a + cell - q, back); return true; }
+    return false;
+  }
+  for (let k = 0; k < wave.length; k++) {
+    const ch = wave[k], a = off + k * cell;
+    /* '.' 是「上一格的字形原样再来一遍」，不是「保持上一值」。pp.. 在 WaveDrom 里是连着的四拍时钟，
+       当保持值处理的话时钟会在第 2 拍后停在空中 —— 只有格内会跳变的字形需要续，静态字形的 '.' 落在
+       已经稳定的电平上，天然等价于不动。 */
+    if (ch === '.') { if (last !== null) apply(last, a); continue; }
+    if (ch === ' ' || ch === '#' || ch === '|') { gap++; last = null; continue; }
+    if (ch === '<' || ch === '>') { excl++; continue; }
+    if (ch === 'U' || ch === 'D') { setAt(a, 'x'); weak++; continue; }
+    if (WJ_DATA_CH.indexOf(ch) >= 0) {
+      di++; labels.push({ k: k, lab: data[di] != null ? data[di] : '', col: ch });
+      cur = '@' + di;                     // 占位：数据格的真实取值第二遍才定，这里先让下一格的 x/z 不会被 dedupe 吃掉
+      if (ch !== '=') sig.wj = Object.assign(sig.wj || {}, { datacolor: ((sig.wj && sig.wj.datacolor) || []).concat([{ k: k, hex: WJ_DIGIT_COLOR[ch] }]) });
+      last = null;                       // 数据块由事件边界撑着，'.' 续它 = 让块变宽，不需要新事件
+    } else if (apply(ch, a)) {
+      last = ('pnPNud'.indexOf(ch) >= 0) ? ch : null;
+      if (ch === 'P' || ch === 'N') rep.drop.push('时钟箭头（P/N 的周期标记）无对应物，只保留了方波本身');
+    } else { setAt(a, 'x'); rep.drop.push('未知字符 `' + ch + '`（' + who + ' 第 ' + (k + 1) + ' 格）按 x 处理'); }
+  }
+  sig._wjEnd = off + wave.length * cell;      // 末尾的 '.' 不产生事件，但格子要占位（只在内存里，不进 .wy）
+  if (gap) rep.merge.push(who + '：' + gap + ' 处空档（空格 / # / |）在 V2 里等价于「保持上一值」');
+  if (kind === 'bus' && /[01lhHXZ]/.test(wave)) rep.drop.push(who + '：WaveJSON 允许一根线里混用电平字（0/1/x/z）与数据字（=/2…），电平格画成线、数据格画成块；V2 一根线只有一种画法，整条按总线出，电平格会变成数据块 —— 选中它在属性面板把「类型」改成 1 bit 就能整条按电平看，数据格留成没有标签的空方块');
+  if (excl) rep.drop.push(who + '：' + excl + ' 个 xclude 标记（< / >）只告诉 WaveDrom「这一格别画起始沿」，V2 无对应物，按保持上一值处理');
+  if (weak) rep.drop.push(who + '：' + weak + ' 个 U/D（弱上下拉）官方引擎也没有对应砖，V1 一并画成不确定框，这里按 x 处理');
+
+  /* 数据格定值：WaveJSON 的 data 是**显示文本**，不是数值。能解析成数就存数，
+     并把原文登记进取值映射，显示逐字等于 WaveDrom、导出 VCD 又写得出真值；
+     纯文本标签只能给合成值（合成值避开已占用的真实数值）。 */
+  if (labels.length) {
+    const uniq = []; labels.forEach(o => { if (uniq.indexOf(o.lab) < 0) uniq.push(o.lab); });
+    const valOf = {}, taken = {};
+    /* 字形用掉的真实电平（0 / 1）先占住号：否则 '01=..' 里的 IDLE 会分到 0，
+       第 1 格的低电平和最后一格的 IDLE 就成了同一个值。 */
+    sig.events.forEach(ev => { if (typeof ev.v === 'number') taken[ev.v] = 1; });
+    uniq.forEach(lab => { const v = parseVal(lab, sig); if (v != null && isFinite(v) && taken[v] === undefined) { valOf[lab] = v; taken[v] = 1; } });
+    let syn = 0;
+    const nextSyn = () => { while (taken[syn] !== undefined) syn++; taken[syn] = 1; return syn++; };
+    uniq.forEach(lab => { if (valOf[lab] === undefined) valOf[lab] = nextSyn(); });
+    /* 第一遍给数据格挂的 '@序号' 占位只是防去重的记号，不是取值；毛刺字形（u/d）会把它当「回到的电平」
+       带进事件表。这一遍统一换成该标签的真值，否则 '@0' 会被当成一个取值画进总线块。 */
+    sig.events.forEach(ev => { if (typeof ev.v === 'string' && ev.v.charAt(0) === '@') ev.v = valOf[labels[+ev.v.slice(1)].lab]; });
+    sig.map = []; sig.fmt = 'sym';
+    /* data 是**显示文本**：WaveJSON 允许只写 =/2/3… 而不给 data，WaveDrom 把砖画成空的，
+       V2 跟着留空，不拿合成序号冒充标签（合成序号只进 .wy 的取值映射）。 */
+    Object.keys(valOf).forEach(lab => { sig.map.push({ v: valOf[lab], name: lab }); });
+    sig.map.sort((m, n2) => m.v - n2.v);
+    labels.forEach(o => { sig.events.push({ t: off + o.k * cell, v: valOf[o.lab] }); });   // 数据格一律留事件：总线块的砖缝就在这一格
+    normalize(sig);                       // 字形事件在前、数据事件在后，不排序的话 valueAt 的二分直接读错
+    const noLab = labels.filter(o => o.lab === '').length;
+    if (noLab) rep.note.push(who + '：' + noLab + ' 个数据格在 WaveJSON 里没有对应的 data 标签，V2 与 WaveDrom 一样画空砖（取值仍是合成序号）');
+    const texty = uniq.filter(lab => { const v = parseVal(lab, sig); return lab !== '' && (v == null || !isFinite(v)); });
+    if (texty.length) rep.note.push(who + '：' + texty.length + ' 个取值是纯文本标签（' + texty.slice(0, 3).join(' / ') + (texty.length > 3 ? ' …' : '') + '），V2 给了合成序号 + 取值映射；导出 VCD 只能写序号');
+    if ((sig.wj || {}).datacolor) rep.drop.push(who + '：' + sig.wj.datacolor.length + ' 处数据填色（2–9 数字色）WaveJSON 里是画死的，V2 改由取值映射上色，已原样存在 .wy 里等 M3 用');
+  }
+  if (typeof e.node === 'string') {
+    const nodes = [];
+    for (let k = 0; k < e.node.length; k++) if (/[A-Za-z]/.test(e.node[k])) nodes.push({ t: off + k * cell, ch: e.node[k] });
+    if (nodes.length) sig.nodes = nodes;
+  }
+  const known = ['name', 'wave', 'data', 'node', 'period', 'phase', 'datacolor'];
+  const extra = {}; let nExtra = 0;
+  Object.keys(e).forEach(k => { if (known.indexOf(k) < 0) { extra[k] = e[k]; nExtra++; } });
+  if (nExtra) { sig.wj = Object.assign(sig.wj || {}, { extra: extra }); rep.note.push(who + '：' + nExtra + ' 个 V2 暂不认的键（' + Object.keys(extra).join(' / ') + '）原样存在 .wy 的 sig.wj.extra 里，回 V1 时还原'); }
+  if (!wave.length) rep.note.push(who + '：没有 wave，按空信号导入');
+  return sig;
+}
+
+function wjToDoc(j, name) {
+  const rep = wjNewRep();
+  if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('WaveJSON 顶层必须是一个对象');
+  if (j.signal !== undefined && !Array.isArray(j.signal)) throw new Error('"signal" 必须是数组');
+  const doc = newDoc();
+  const cfg = (j.config && typeof j.config === 'object') ? j.config : {};
+  const hscale = Math.min(8, Math.max(1, Math.round(+cfg.hscale || 1)));
+  doc.meta.origin = 'wavejson'; doc.meta.name = name || 'WaveJSON 导入';
+  /* WaveJSON 没有时间单位，一格就是一格：perUnit 折进 hscale，标尺就跟 WaveDrom 一样报 0/1/2… */
+  doc.time = { unit: '', perUnit: WJC * hscale, t0: 0, t1: 100, grid: { step: WJC, sub: 4 } };
+  doc.wj = { origin: 0 };        // WaveJSON 的第 0 格就在它自己的 0 时刻；t0 是最左事件，负 phase 会让两者错开
+  (j.signal || []).forEach(e => { const l = wjEntryToLane(e, rep, 0); if (l) doc.lanes.push(l); });
+  if (!doc.lanes.length) rep.drop.push('signal 是空的，只得到一个空白页');
+
+  let t1 = WJC, t0 = 0;
+  allSigs(doc.lanes).forEach(s => {
+    if (s._wjEnd > t1) t1 = s._wjEnd;                     // 末尾的 '.' 不产生事件，但格子要占位
+    (s.nodes || []).forEach(nd => { if (nd.t + 1 > t1) t1 = nd.t + 1; });
+    s.events.forEach(ev => { if (ev.t < t0) t0 = ev.t; });
+  });
+  /* 负 phase 会把事件推到 0 左边：不整体平移（那会改掉用户看到的格号），把 t0 放到最小事件处 */
+  doc.time.t0 = t0; doc.time.t1 = Math.max(t1, t0 + WJC);
+
+  (Array.isArray(j.edge) ? j.edge : []).forEach(e => {
+    if (typeof e !== 'string') { (doc.wj = doc.wj || {}).rawEdges = ((doc.wj || {}).rawEdges || []).concat([e]); return; }
+    const m = /^\s*([a-zA-Z])([~|\-+<>]+?)\s*([a-zA-Z])(?:\s+(.*))?$/.exec(e);
+    if (m) doc.edges.push({ from: m[1], to: m[3], spec: m[2], label: m[4] || '' });
+    else { (doc.wj = doc.wj || {}).rawEdges = ((doc.wj || {}).rawEdges || []).concat([e]); }
+  });
+  const rest = {};
+  ['head', 'foot', 'skin'].forEach(k => { if (j[k] != null) rest[k] = j[k]; });
+  Object.keys(cfg).forEach(k => { if (k !== 'hscale') rest['config.' + k] = cfg[k]; });
+  Object.keys(j).forEach(k => { if (['signal', 'edge', 'head', 'foot', 'config'].indexOf(k) < 0) rest[k] = j[k]; });
+  if (Object.keys(rest).length) {
+    doc.wj = Object.assign(doc.wj || {}, rest);
+    rep.drop.push('head / foot / skin / config 等非波形字段共 ' + Object.keys(rest).length + ' 项 V2 暂不渲染，已原样存在 .wy 的 wj 里（回 V1 不丢）');
+  }
+  if (doc.edges.length) rep.drop.push(doc.edges.length + ' 条标注箭头已存进 .wy（含 node 字母），但 M0 的渲染器还不画它们 —— M2 补');
+  return { doc: doc, rep: rep };
+}
+
+/* ---- 反向：事件表 → WaveJSON（按格采样，§7 规则 1，稳态优先） ---- */
+function wjSample(sig, a, b, cell, rep) {
+  const half = Math.round(cell / 2), q = Math.round(cell / 4);
+  const evs = sig.events.filter(e => e.t >= a && e.t < b);
+  const segs = laneSegs(sig, a, b);
+  const steady = segs.length ? segs[segs.length - 1].v : 'x';
+  if (sig.kind === 'analog') { rep.dropAnalog++; return 'x'; }
+  if (evs.length === 2 && evs[0].t === a && Math.abs(evs[0].t + half - evs[1].t) <= 1) {
+    if (evs[0].v === 1 && evs[1].v === 0) return 'p';
+    if (evs[0].v === 0 && evs[1].v === 1) return 'n';
+  }
+  /* 时钟的后半拍：上一格留下的电平正好等于这一格的起始电平，格首就没有沿，只剩格中那一次跳变。
+     WaveJSON 里只有 p/n 的砖是「格中翻一次」，所以单边的半格跳变只能这么表达。 */
+  if (evs.length === 1) {
+    const inc = valueAt(sig, a);
+    if (typeof inc === 'number' && typeof evs[0].v === 'number' && evs[0].v !== inc && Math.abs(evs[0].t - (a + half)) <= 1) {
+      if (sig.kind !== 'clock') rep.halfEdge++;
+      return evs[0].v === 1 ? 'n' : 'p';
+    }
+  }
+  /* 一格只有一个字符：跳出去又回来 = 毛刺，正好是 WaveJSON 留给 u/d 的语义，不要求对齐 1/4 格 */
+  if (evs.length === 2 && (sig.kind === 'bit' || sig.kind === 'clock') && evs[1].v === valueAt(sig, a)) {
+    rep.glitch++;
+    if (evs[0].v === 1) return 'u';
+    if (evs[0].v === 0) return 'd';
+  }
+  if (evs.length > 1) rep.mergeCount++;
+  if (evs.length >= 1 && (sig.kind === 'bit' || sig.kind === 'clock')) {
+    /* 亚周期跳变：WaveJSON 一格只有一个字符，只能报「合并了几次」 */
+    rep.merged.push({ name: sig.name, t: a, n: evs.length });
+  }
+  if (isSpecial(steady)) return steady;
+  if (sig.kind === 'bus') return null;                 // 交给调用方写 data
+  return steady === 1 ? '1' : steady === 0 ? '0' : 'x';
+}
+function wjLabel(sig, v) {
+  const hit = (sig.map || []).find(m => m.v === v);
+  return hit ? (hit.name != null ? hit.name : hit.short) : fmtVal(sig, v);
+}
+function wjSigOut(sig, doc, rep) {
+  const w0 = sig.wj || {};
+  const per = (+w0.period || 1);
+  const cell = Math.max(1, Math.round(doc.time.grid.step * per));
+  const off = -Math.round((+w0.phase || 0) * cell);           // 与导入同一个符号：正 phase 往前挪
+  const base = (doc.wj && typeof doc.wj.origin === 'number') ? doc.wj.origin : doc.time.t0;
+  const start = base + off;
+  const n = Math.max(1, Math.ceil((doc.time.t1 - start) / cell));
+  let wave = '', prev = null, prevLab = null; const data = [];
+  for (let k = 0; k < n; k++) {
+    const a = start + k * cell;
+    let g = wjSample(sig, a, a + cell, cell, rep), lab = null;
+    if (g === null) { lab = wjLabel(sig, valueAt(sig, a + cell - 1)); g = '='; }
+    const same = g === '=' ? (lab === prevLab) : (g === prev);
+    if (same) { g = '.'; }                                // '.' 沿用上一格的 data 标签，不占 data 槽位
+    else { prev = g; if (g === '=') { prevLab = lab; data.push(lab); } }
+    wave += g;
+  }
+  const o = { name: sig.name, wave: wave };
+  if (data.length) o.data = data;
+  const w = sig.wj || {};
+  if (w.period) o.period = w.period;
+  if (w.phase) o.phase = w.phase;
+  if (sig.nodes && sig.nodes.length) {
+    let node = new Array(wave.length).fill(' ');
+    sig.nodes.forEach(nd => { const k = Math.round((nd.t - start) / cell); if (k >= 0 && k < node.length) node[k] = nd.ch; });
+    o.node = node.join('');
+  }
+  if (w.extra) Object.keys(w.extra).forEach(k => { if (o[k] === undefined) o[k] = w.extra[k]; });
+  return o;
+}
+function wjLanesOut(list, doc, rep) { return list.map(n => n.lanes ? [n.group].concat(wjLanesOut(n.lanes, doc, rep)) : wjSigOut(n, doc, rep)); }
+function docToWj(doc) {
+  const rep = wjNewRep(); const r = { mergeCount: 0, glitch: 0, halfEdge: 0, dropAnalog: 0, merged: [] };
+  const j = { signal: wjLanesOut(doc.lanes, doc, r) };
+  const w = doc.wj || {};
+  if (w.head) j.head = w.head; if (w.foot) j.foot = w.foot;
+  const cfg = {}; Object.keys(w).forEach(k => { if (/^config\./.test(k)) cfg[k.slice(7)] = w[k]; });
+  const perUnit = doc.time.perUnit || WJC;
+  if (Math.round(perUnit / WJC) > 1) cfg.hscale = Math.round(perUnit / WJC);
+  if (Object.keys(cfg).length) j.config = cfg;
+  if (doc.edges.length) j.edge = doc.edges.map(e => e.from + e.spec + e.to + (e.label ? ' ' + e.label : ''));
+  if (w.rawEdges) j.edge = (j.edge || []).concat(w.rawEdges);
+  Object.keys(w).forEach(k => { if (['head', 'foot', 'rawEdges'].indexOf(k) < 0 && !/^config\./.test(k)) j[k] = w[k]; });
+  if (r.dropAnalog) rep.drop.push(r.dropAnalog + ' 个模拟信号格：WaveJSON 没有模拟量，这些格写成 x');
+  const bad = allSigs(doc.lanes).filter(s => s.kind === 'analog').length;
+  if (bad) rep.note.push(bad + ' 根模拟信号（' + allSigs(doc.lanes).filter(s => s.kind === 'analog').map(s => s.name).join(' / ') + '）整条都不是 WaveJSON 能表达的');
+  if (r.mergeCount) rep.merge.push(r.mergeCount + ' 格内有多于一次跳变，一格只能落一个字符，按「格内最后一个事件」取值（稳态优先）');
+  if (r.halfEdge) rep.merge.push(r.halfEdge + ' 处跳变正好落在格中：WaveJSON 只有 p/n 的砖是半格翻转，回 V1 会被画成时钟砖');
+  if (r.glitch) rep.merge.push(r.glitch + ' 处毛刺改用 WaveJSON 的 u/d 承载：形状（跳一下再回来）保住了，但跳变时刻被规范化到格内 1/4 与 3/4 处');
+  if (doc.time.grid && doc.time.grid.step && doc.time.grid.step !== WJC) {
+    rep.merge.push('V2 的格宽是 ' + doc.time.grid.step + ' tick，WaveJSON 的一格固定 ' + WJC + ' tick：导出的字符流按 V2 的格切，' +
+      '跳变次序不变，但回 V1 / 再导回 V2 后格线会重排');
+  }
+  if (doc.bands.length) rep.drop.push(doc.bands.length + ' 个高亮带：WaveJSON 无对应物');
+  if (doc.markers.length) rep.drop.push(doc.markers.length + ' 个时刻标记：WaveJSON 无对应物');
+  if (doc.decodes.length) rep.drop.push(doc.decodes.length + ' 条解码行：WaveJSON 无解码概念');
+  if (doc.scenes.length) rep.drop.push(doc.scenes.length + ' 个展示场景：WaveJSON 无对应物');
+  if (doc.graphs.length) rep.drop.push(doc.graphs.length + ' 张状态图：按 §7 规则 8 不进报告口径，这里只是提示');
+  const colored = allSigs(doc.lanes).filter(s => s.color && s.color.mode !== 'auto').length;
+  if (colored) rep.drop.push(colored + ' 个自定义颜色：WaveJSON 不带颜色（§7 规则 4），回 V1 会退回默认通道色');
+  /* 导入时登记的数据填色（2–9 数字色）现在只躺在 .wy 里等 M3：导出写的是 '='，砖块颜色回 V1 会变。
+     形状和取值都没动，但「无损」这个词不能说谎，所以进报告。 */
+  const dyed = allSigs(doc.lanes).filter(x => x.wj && (x.wj.datacolor || []).length);
+  if (dyed.length) rep.drop.push(dyed.length + ' 根信号带着 WaveJSON 的数据填色（2–9 数字色）：V2 逐取值上色排在 M3，' +
+    '回 V1 会写成 = 而不是原数字，砖块退回默认色；数字色本身已原样存在 .wy 里，M3 接上后能还原');
+  return { json: j, rep: rep };
+}
+
+/* 一段文本 → 先当 .wy，再退回 WaveJSON（宽容解析）。两条路都失败才报错。 */
+function loadAnyText(txt, name) {   // .wy 优先，认不出再当 WaveJSON；V1 交接、拖文件、Ctrl+O 都走这里
+  let o = null; try { o = JSON.parse(txt); } catch (e) { try { o = parseLoose(txt); } catch (e2) { o = null; } }
+  if (o && typeof o === 'object' && o.wy === 1) return loadWyText(txt, name);
+  if (o && typeof o === 'object') {
+    try {
+      const r = wjToDoc(o, name ? name.replace(/\.(json|txt|wave)$/i, '') : null);
+      DOC = r.doc; undoS.length = redoS.length = 0;
+      afterLoad(); clearDirty(); syncName(); showWjRep(r.rep, '导入 ' + (name || 'WaveJSON'));
+      return true;
+    } catch (e) { toast('不是 .wy，也不是合法 WaveJSON：' + e.message, true); return false; }
+  }
+  toast('.wy 不是合法 JSON，也解析不成 WaveJSON', true); return false;
+}
+/* 报告面板：兼容组（WaveJSON / 回 V1）一律「先出报告再落盘 / 再跳转」，不静默降级（§10 已定）。
+   actions 为空 = 纯查看（导入后的那份就是这种）。 */
+function showWjRep(rep, title, actions) {
+  actions = actions || [];
+  if (!wjRepCount(rep)) {
+    if (actions.length) runWjAction(actions[0]);
+    else toast(title + ' · 形状无损');
+    return;
+  }
+  toast(title + ' · ' + wjRepCount(rep) + ' 项有损/登记，详见报告');
+  V.wjRep = rep; V.wjRepTitle = title; V.wjActions = actions;
+  $('#wjrepTitle').textContent = title;
+  $('#wjrepSum').textContent = '丢弃 ' + rep.drop.length + ' · 改写 ' + rep.merge.length + ' · 登记 ' + rep.note.length;
+  $('#wjrepBody').innerHTML = [['丢弃', rep.drop], ['合并 / 改写', rep.merge], ['登记', rep.note]]
+    .filter(x => x[1].length)
+    .map(x => '<div class="sec"><h6>' + esc(x[0]) + '<span class="cnt">' + x[1].length + '</span></h6><ul>' +
+              x[1].map(t => '<li>' + esc(t) + '</li>').join('') + '</ul></div>').join('');
+  $('#wjrepFoot').innerHTML = '<button class="btn" data-act="rep-close">关闭</button><span class="sp"></span>' +
+    actions.map((a, i) => '<button class="btn' + (a.primary ? ' pri' : '') + '" data-rep="' + i + '">' + esc(a.label) + '</button>').join('');
+  $('#wjrep').classList.add('on');
+}
+function closeWjRep() { $('#wjrep').classList.remove('on'); V.wjActions = []; }
+function runWjAction(a) { closeWjRep(); a.run(); }
+function bindRep() {
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-rep]');
+    if (b) { const a = (V.wjActions || [])[+b.getAttribute('data-rep')]; if (a) runWjAction(a); return; }
+    if (ev.target.closest('[data-act="rep-close"]') || ev.target.id === 'wjrep') closeWjRep();
+  });
+}
+
+/* 交接：V1 唯一的跨页通道就是 hash（#<urlencoded WaveJSON>，见 index.html 的 loadDocFromHash），
+   所以 V2→V1 直接写这个格式。图太大时 URL 会被浏览器截断，退到共享键 + #handoff。
+   键名不能碰 'wdgui-doc-v1'：V1 与两个宿主插件都在自动重写它，拿它交接会被覆盖。 */
+const WY_HANDOFF_KEY = 'wdgui-handoff-wj';
+const WY_HASH_MAX = 30000;
+function v1Url(json) {
+  const txt = encodeURIComponent(JSON.stringify(json));
+  if (txt.length <= WY_HASH_MAX) return 'index.html#' + txt;
+  trySet(WY_HANDOFF_KEY, JSON.stringify(json));
+  return 'index.html#handoff';
+}
+/* 收：hash 可以是 V1 写过来的 WaveJSON，也可以是 #handoff（图太大时走存储）。读完就把 hash 与键都清掉，
+   否则刷新一次会再导入一次，把用户已经改过的图盖掉。 */
+function handoffFromHash() {
+  const raw = location.hash.slice(1);
+  if (!raw) return false;
+  let txt = '';
+  try {
+    if (raw === 'handoff') { txt = tryGet(WY_HANDOFF_KEY) || ''; try { localStorage.removeItem(WY_HANDOFF_KEY); } catch (e) { } }
+    else txt = decodeURIComponent(raw);
+  } catch (e) { return false; }
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+  if (!txt) { toast('交接链接里带的 hash / 共享键都读不出图（可能已被打开过一次）', true); return false; }
+  return loadAnyText(txt, '来自 V1');
+}
+/* 兼容组两个出口：下载 .json 与去 V1，都先把报告摊开 */
+function exportWj() {
+  const r = docToWj(DOC);
+  showWjRep(r.rep, '导出 WaveJSON · 兼容性报告', [{
+    primary: true, label: '下载 .json', run: () => {
+      download(DOC.meta.name + '.json', new Blob([JSON.stringify(r.json, null, 2)], { type: 'application/json' }));
+      toast('已导出 ' + DOC.meta.name + '.json');
+    }
+  }]);
+}
+function goV1() {
+  const r = docToWj(DOC);
+  showWjRep(r.rep, '回 V1 · 兼容性报告', [{
+    primary: true, label: '带着这张图去 V1', run: () => { location.href = v1Url(r.json); }
+  }]);
+}
+
+/* V1（index.html）的 14 个示例，原样搬过来当 M1 的回归夹具：官方 WaveDrom 示例集，
+   含 p/P/n/N、u/d、大小写字形、period/phase、数据色 2–9、分组、空行 `{}`、| 与 # 空档、
+   hscale、head/foot/config 这些边角。V1 的示例改了这里跟着同步——它们就是用户手里那张图。 */
+const WJ_FIX = [{"signal":[{"name":"Alfa","wave":"01.zx=ud.23.456789"}]},{"config":{"hscale":1},"head":{"text":"总线握手示例","tick":0},"signal":[{"name":"clk","wave":"p.........."},{"name":"req","wave":"0.1.....0.."},{"name":"ack","wave":"1.....01..."},{"data":["0x18","0x10"],"name":"addr","wave":"x3...x4...."},{"data":["D0","D1","D2"],"name":"data","wave":"x.568x....."}]},{"config":{"hscale":1},"edge":["a~>b 命令锁存"],"head":{"text":"分组与箭头示例"},"signal":[["控制组",{"name":"CK","node":".a.....","wave":"P......"},{"data":["RAS","NOP"],"name":"CMD","wave":"x3..x4.."}],["数据组",{"data":["0x11"],"name":"ADDR","node":".b.....","wave":"x4x...."},{"data":["D0","D1","D2","D3"],"name":"DQ","wave":"z.5555."}]]},{"config":{"hscale":1},"foot":{"text":"tAC 出现于 DQS 之后"},"head":{"text":"DDR 读时序","tick":0},"signal":[{"name":"CK","node":".a.......","wave":"P........"},{"data":["RAS","NOP","NOP","RAS","NOP","NOP"],"name":"CMD","node":"......c.","wave":"x.34x=x34="},{"data":["0x18","0x18","0x10","0x11"],"name":"ADDR","node":".....d...","wave":"x3x=x4x=x"},{"name":"DQS","wave":"z....0.101"},{"data":["D0","D1","D2","D3","D4","D5","D6"],"name":"DQ","wave":"z.5555555"}]},{"signal":[{"name":"pclk","wave":"p......."},{"name":"Pclk","wave":"P......."},{"name":"nclk","wave":"n......."},{"name":"Nclk","wave":"N......."},{},{"name":"clk0","wave":"phnlPHNL"},{"name":"clk1","wave":"xhlhLHl."},{"name":"clk2","wave":"hpHplnLn"},{"name":"clk3","wave":"nhNhplPl"},{"name":"clk4","wave":"xlh.L.Hx"}]},{"signal":[{"name":"clk","wave":"P......"},{"data":["head","body","tail","data"],"name":"bus","wave":"x.==.=x"},{"name":"wire","wave":"0.1..0."}]},{"signal":[{"name":"clk","wave":"p.....|..."},{"data":["head","body","tail","data"],"name":"Data","wave":"x.345x|=.x"},{"name":"Request","wave":"0.1..0|1.0"},{},{"name":"Acknowledge","wave":"1.....|01."}]},{"signal":[{"name":"clk","wave":"p..Pp..P"},["Master",["ctrl",{"name":"write","wave":"01.0...."},{"name":"read","wave":"0...1..0"}],{"data":["A1","A2"],"name":"addr","wave":"x3.x4..x"},{"data":["D1"],"name":"wdata","wave":"x3.x...."}],{},["Slave",["ctrl",{"name":"ack","wave":"x01x0.1x"}],{"data":["Q2"],"name":"rdata","wave":"x.....4x"}]]},{"signal":[{"name":"CK","period":2,"wave":"P........"},{"data":["RAS","NOP","CAS","NOP","NOP","NOP","NOP"],"name":"CMD","phase":0.5,"wave":"x.3x=x4x=x=x=x=x"},{"data":["ROW","COL"],"name":"ADDR","phase":0.5,"wave":"x.=x..=x........"},{"name":"DQS","wave":"z.......0.1010z."},{"data":["D0","D1","D2","D3"],"name":"DQ","wave":"z.........5555z."}]},{"config":{"hscale":2},"signal":[{"name":"clk","wave":"p...."},{"data":["head","body","tail"],"name":"Data","wave":"x345x"},{"name":"Request","wave":"01..0"}]},{"config":{"skin":"narrow"},"signal":[{"name":"clk","wave":"p...."},{"data":["head","body","tail"],"name":"Data","wave":"x345x"},{"name":"Request","wave":"01..0"}]},{"foot":{"text":"Figure 100","tock":9},"head":{"every":2,"text":"WaveDrom example","tick":0},"signal":[{"name":"clk","wave":"p...."},{"data":["a","b","c"],"name":"Data","wave":"x345x"},{"name":"Request","wave":"01..0"}]},{"edge":["a~b t1","c-~a t2","c-~>d time 3","d~-e","e~>f","f->g","g-~>h","h~>i some text","h~->j"],"signal":[{"name":"A","node":".a........j","wave":"01........0...."},{"name":"B","node":"..b.......i","wave":"0.1.......0.1.."},{"name":"C","node":"...c....h..","wave":"0..1....0...1.."},{"name":"D","node":"....d..g...","wave":"0...1..0.....1."},{"name":"E","node":".....ef....","wave":"0....10.......1"}]},{"edge":["b-|a t1","a-|c t2","b-|-c t3","c-|->e t4","e-|>f more text","e|->d t6","c-g","f-h","g<->h 3 ms","i+j 5 ms"],"signal":[{"name":"A","node":".a..e..","wave":"01..0.."},{"name":"B","node":"..b..d.","phase":0.5,"wave":"0.1..0."},{"name":"C","node":"...c..f","wave":"0..1..0"},{"node":"...g..h"},{"node":"...i..j","phase":0.5},{"name":"D","phase":0.5,"wave":"0..1..0"}]}];
+
+/* WaveJSON「这一格该显示成什么」的独立参考实现：只读字符，不看 V2 的事件表，也不复用 wjToDoc。
+   每格给 {a, cell, s 格首, e 格尾, lab 数据格文本, exp 是显式数据字符, skip 不比对}；
+   取值 'D' 表示数据格（V2 里的取值是合成序号 / 解析出来的真数，只能比显示文本）。
+   '.' = 续写上一格的字形（p/n 必须续，否则 'p....' 的时钟会在第二拍停住）；
+   空档与 xclude 按「保持上一值」计，与兼容性报告的口径一致。 */
+function wjOracle(sig) {
+  const wave = typeof sig.wave === 'string' ? sig.wave : '';
+  const data = Array.isArray(sig.data) ? sig.data.map(String) : (typeof sig.data === 'string' ? sig.data.split(/\s+/) : []);
+  const cell = Math.max(1, Math.round(WJC * (+sig.period || 1)));
+  const off = -Math.round((+sig.phase || 0) * cell);
+  let cur = 'x', di = -1, pen = null, lab = null;
+  const out = [];
+  const push = (k, a, e, l, exp, skip) => out.push({ a: off + k * cell, cell: cell, s: a, e: e, lab: l, exp: !!exp, skip: !!skip });
+  for (let k = 0; k < wave.length; k++) {
+    let ch = wave[k];
+    if (ch === '.') {
+      if (pen) ch = pen; else { push(k, cur, cur, lab); continue; }   // 没有可续的字形 = 保持上一格的值
+    } else pen = null;
+    if (ch === ' ' || ch === '#' || ch === '|' || ch === '<' || ch === '>') { push(k, cur, cur, lab); continue; }
+    if (ch === 'U' || ch === 'D') { cur = 'x'; lab = null; push(k, 'x', 'x', null); continue; }
+    if ('0lL'.indexOf(ch) >= 0) { cur = 0; lab = null; push(k, 0, 0, null); continue; }
+    if ('1hH'.indexOf(ch) >= 0) { cur = 1; lab = null; push(k, 1, 1, null); continue; }
+    if ('xX'.indexOf(ch) >= 0) { cur = 'x'; lab = null; push(k, 'x', 'x', null); continue; }
+    if ('zZ'.indexOf(ch) >= 0) { cur = 'z'; lab = null; push(k, 'z', 'z', null); continue; }
+    if (ch === 'p' || ch === 'P') { cur = 0; lab = null; pen = 'p'; push(k, 1, 0, null); continue; }
+    if (ch === 'n' || ch === 'N') { cur = 1; lab = null; pen = 'n'; push(k, 0, 1, null); continue; }
+    if (ch === 'u' || ch === 'd') { if (cur !== 'D') lab = null; push(k, cur, cur, lab); continue; }
+    if (WJ_DATA_CH.indexOf(ch) >= 0) { di++; cur = 'D'; lab = data[di] != null ? data[di] : ''; push(k, 'D', 'D', lab, true); continue; }
+    push(k, cur, cur, lab, false, true);                              // 认不出的字符：V2 按 x 处理并写进报告，这里不比
+  }
+  return out;
+}
+function wjLeaves(arr, out) {
+  (arr || []).forEach(e => {
+    if (Array.isArray(e)) wjLeaves(e.slice(1), out);
+    else if (e && typeof e === 'object') out.push(e);
+  });
+  return out;
+}
+
+/* ---------- 11. 自检（?selftest=1） ---------- */
+function selftest() {
+  const out = []; let pass = 0, fail = 0;
+  const ok = (name, cond, extra) => { if (cond) { pass++; out.push('  ok  ' + name); } else { fail++; out.push('FAIL  ' + name + (extra != null ? '  → ' + extra : '')); } };
+  const eq = (name, a, b) => ok(name, JSON.stringify(a) === JSON.stringify(b), JSON.stringify(a) + ' != ' + JSON.stringify(b));
+
+  const s = newSig('t', 'bit');
+  ok('空信号取值 = x', valueAt(s, 5) === 'x');
+  setRange(s, 10, 20, 1);
+  eq('setRange 只留两个事件', s.events.map(e => [e.t, e.v]), [[10, 1], [20, 'x']]);
+  ok('段推导', laneSegs(s, 0, 30).length === 3);
+  setRange(s, 15, 18, 0);
+  eq('再画一段会劈开', s.events.map(e => [e.t, e.v]), [[10, 1], [15, 0], [18, 1], [20, 'x']]);
+  eq('窗口裁剪', laneSegs(s, 16, 19).map(g => [g.t0, g.t1, g.v]), [[16, 18, 0], [18, 19, 1]]);
+  ok('二分定位窗口外', laneSegs(s, 100, 120).length === 1 && laneSegs(s, 100, 120)[0].v === 'x');
+  normalize(s); ok('normalize 幂等', s.events.length === 4);
+
+  const bus = newSig('b', 'bus', { bits: 8 });
+  bus.events = [{ t: 0, v: 0x12 }, { t: 10, v: 0 }, { t: 20, v: 'x' }];
+  eq('hex 格式', ['0x12', '0x00', 'x'], [fmtVal(bus, 0x12), fmtVal(bus, 0), fmtVal(bus, 'x')]);
+  bus.fmt = 'bin'; ok('bin 补零到位宽', fmtVal(bus, 5) === '0b00000101');
+  bus.fmt = 'dec'; ok('dec', fmtVal(bus, 255) === '255');
+  bus.fmt = 'ascii'; ok('ascii', fmtVal(bus, 65) === 'A');
+  const sym = newSig('st', 'bus', { bits: 3, fmt: 'sym' }); sym.map = [{ v: 2, name: 'XFER' }];
+  ok('sym 命中', fmtVal(sym, 2) === 'XFER');
+  ok('sym 未命中回退 hex', fmtVal(sym, 5) === '0x5');
+  ok('parseVal 0x', parseVal('0x1f', bus) === 31);
+  ok('parseVal 16 裸串', parseVal('ff', bus) === 255);
+  ok('parseVal x', parseVal('x', bus) === 'x');
+  ok('parseVal Verilog 字面量', parseVal("8'b1001_0000", bus) === 144);
+  ok('parseVal 0b', parseVal('0b101', bus) === 5);
+  ok('parseVal 定宽十进制', parseVal("4'd13", bus) === 13);
+  ok('parseVal 裸数字按十进制', parseVal('12', bus) === 12);
+  ok('parseVal 下划线分组', parseVal("8'hFF_E0", bus) === 65504);
+
+  const an = newSig('a', 'analog', { unit: 'V' });
+  ok('analog 带单位', fmtVal(an, 1.234) === '1.234 V');
+
+  const d = demoDoc();
+  const txt = JSON.stringify(toWyOf(d));
+  const back = fromWy(JSON.parse(txt));
+  ok('.wy 往返：信号数', allSigs(back).length === allSigs(d.lanes).length, allSigs(back).length);
+  ok('.wy 往返：mosi 事件数', sigById2(back, 'mosi').events.length === 9);
+  ok('.wy 往返：颜色保住了', sigById2(back, 'mosi').color.hex === '#B45309');
+  ok('.wy 往返：分组保住了', back.lanes[0].group === 'SPI');
+  ok('.wy 往返：map 保住了', sigById2(back, 'state').map.length === 6);
+  ok('.wy 往返：markers 保住了', back.markers.length === 2);
+  ok('.wy 往返：时间基准保住了', back.time.grid.step === 5 && back.time.perUnit === 1);
+  let bad = null; try { fromWy({ wy: 9 }); } catch (e) { bad = e.message; }
+  ok('版本不符会拒绝', !!bad, bad);
+  let bad2 = null; try { fromWy(null); } catch (e) { bad2 = e.message; }
+  ok('垃圾输入会拒绝', !!bad2, bad2);
+
+  /* PNG iTXt 往返 */
+  try {
+    const fake = basePng();
+    const withTxt = pngInsertITXt(fake, WY_PNG_KEYWORD, '{"wy":1}');
+    ok('PNG 插入 iTXt 后仍是合法签名', PNG_SIG.every((b, i) => withTxt[i] === b));
+    ok('PNG iTXt 往返', pngExtractWy(withTxt) === '{"wy":1}');
+  } catch (e) { ok('PNG iTXt 往返', false, e.message); }
+
+  /* SVG metadata 往返 */
+  const sv = svgWithMeta('<svg xmlns="http://www.w3.org/2000/svg"></svg>', '{"wy":1,"x":2}');
+  ok('SVG metadata 往返', svgExtractWy(sv) === '{"wy":1,"x":2}');
+
+  /* 时间刻度 */
+  ok('fmtT 整数', fmtT(50) === '50 ns');
+  ok('niceStep 单调', niceStep(7) === 10 && niceStep(3) === 5 && niceStep(1) === 1);
+
+  /* 导出 SVG 结构：显式给宽度和时刻范围，不依赖窗口尺寸 */
+  DOC = demoDoc(); readTokens(); V.zoom = 5;
+  const ex = buildExportSvg({ width: 1000, a: 0, b: DOC.time.t1 });
+  ok('导出整窗 SVG 有尺寸', ex.w > 1200 && ex.h > 300, ex.w + 'x' + ex.h);
+  ok('导出 SVG 自包含（无 var()）', !/var\(/.test(ex.str));
+  ok('导出 SVG 画到了 state 的状态名', /XFER/.test(ex.str));
+  ok('导出 SVG 画了 8 条泳道', (ex.str.match(/data-sig=/g) || []).length === 8, (ex.str.match(/data-sig=/g) || []).length);
+  ok('导出 SVG 带标记旗与高亮带', /M1/.test(ex.str) && /传输窗口/.test(ex.str));
+  const live = buildExportSvg();
+  ok('默认导出不传参数也能出图（所见即所得）', /^<svg /.test(live.str) && live.w >= 176, live.w + 'x' + live.h);
+
+  /* ---------- WaveJSON 互通（M1） ---------- */
+  ok('parseLoose 认裸键 / 单引号 / 尾逗号 / 注释', (() => {
+    const o = parseLoose("{ // hi\n signal: [{name:'a', wave:'01',},], }");
+    return o.signal[0].name === 'a' && o.signal[0].wave === '01';
+  })());
+  const w1 = wjToDoc({ signal: [{ name: 'a', wave: '01.0x' }, { name: 'b', wave: 'pp' }] });
+  const sa = w1.doc.lanes[0], sb = w1.doc.lanes[1];
+  eq('导入 · 事件位置按格算', sa.events, [{ t: 0, v: 0 }, { t: 20, v: 1 }, { t: 60, v: 0 }, { t: 80, v: 'x' }]);
+  eq('导入 · 时钟一格两个跳变', sb.events.map(e => [e.t, e.v]), [[0, 1], [10, 0], [20, 1], [30, 0]]);
+  ok('导入 · kind 由字符推断', sa.kind === 'bit' && sb.kind === 'clock');
+  ok('导入 · 时间轴覆盖到最后一格', w1.doc.time.t1 >= 100 && w1.doc.time.unit === '');
+  const w2 = wjToDoc({ signal: [{ name: 'g', wave: 'n' }, ['总线', { name: 'd', wave: '=2', data: ['ff', 7] }]] });
+  const grp = w2.doc.lanes[1], sd = grp.lanes[0];
+  ok('导入 · 嵌套数组变分组', w2.doc.lanes[1].group === '总线' && grp.lanes.length === 1);
+  eq('导入 · 反相时钟先低后高', w2.doc.lanes[0].events.map(e => [e.t, e.v]), [[0, 0], [10, 1]]);
+  ok('导入 · 数据格建了取值映射', sd.fmt === 'sym' && sd.map.length === 2 && sd.map.some(m => m.name === 'ff' && m.v === 255));
+  ok('导入 · 数字标签存成真值', sd.map.find(m => m.name === '7').v === 7);
+  const w3 = wjToDoc({ signal: [{ name: 'st', wave: '=.=.', data: ['IDLE', 'XFER'] }] });
+  const ss = w3.doc.lanes[0];
+  ok('导入 · 纯文本标签给合成值 + 映射', ss.map.length === 2 && ss.map.every(m => typeof m.v === 'number') && fmtVal(ss, ss.events[0].v) === 'IDLE');
+  ok('导入 · 文本标签进报告', w3.rep.note.some(t => /纯文本标签/.test(t)));
+  const w4 = wjToDoc({ signal: [{ name: 'p', wave: '01', phase: 0.5 }, { name: 'neg', wave: '10', phase: -0.5 }] });
+  ok('导入 · 正 phase 把波形往前挪半格（与 V1 同向）', w4.doc.lanes[0].events[0].t === -10);
+  ok('导入 · 负 phase 往后挪，t0 仍取最左事件', w4.doc.time.t0 === -10 && w4.doc.lanes[1].events[0].t === 10);
+  const w5 = wjToDoc({ signal: [{ name: 'fast', wave: '01', period: 0.5 }] });
+  eq('导入 · period 改格宽不改 tick 语义', w5.doc.lanes[0].events.map(e => [e.t, e.v]), [[0, 0], [10, 1]]);
+  const wcont = wjToDoc({ signal: [{ name: 'c', wave: 'pp..pn' }] });
+  eq('导入 · "." 续写上一格字形（pp.. 是连着的四拍时钟，不是停在半空）', wcont.doc.lanes[0].events.map(e => [e.t, e.v]),
+    [[0, 1], [10, 0], [20, 1], [30, 0], [40, 1], [50, 0], [60, 1], [70, 0], [80, 1], [90, 0], [110, 1]]);
+  const wcase = wjToDoc({ signal: [{ name: 'm', wave: '0XHLZ' }, { name: 'g', wave: '0u1d' }] });
+  eq('导入 · 大小写字形（H/L/X/Z）按 V1 口径认', wcase.doc.lanes[0].events.map(e => [e.t, e.v]),
+    [[0, 0], [20, 'x'], [40, 1], [60, 0], [80, 'z']]);
+  eq('导入 · u/d 是格内毛刺：跳到 1/4 与 3/4 处', wcase.doc.lanes[1].events.map(e => [e.t, e.v]),
+    [[0, 0], [25, 1], [35, 0], [40, 1], [65, 0], [75, 1]]);
+  const wexcl = wjToDoc({ signal: [{ name: 'e', wave: '0<>1UD' }] });
+  ok('导入 · xclude（< >）与 U/D 各自进报告', wexcl.rep.drop.some(t => /xclude/.test(t)) && wexcl.rep.drop.some(t => /弱上下拉/.test(t)));
+  const wmix = wjToDoc({ signal: [{ name: 'b', wave: '01=..', data: ['IDLE'] }] });
+  eq('导入 · 纯文本标签的合成值不撞已用掉的电平', wmix.doc.lanes[0].events.map(e => [e.t, e.v]), [[0, 0], [20, 1], [40, 2]]);
+  ok('导入 · 电平字与数据字混用要报告', wmix.rep.drop.some(t => /只有一种画法/.test(t)));
+  const w6 = wjToDoc({ signal: [{ name: 'a', wave: '01', node: 'A.' }], edge: ['A~>B 标注'], head: { text: 'T' }, config: { skin: 'narrow', hscale: 2 } });
+  ok('导入 · edge 进 DOC.edges', w6.doc.edges.length === 1 && w6.doc.edges[0].from === 'A' && w6.doc.edges[0].label === '标注');
+  ok('导入 · node 字母挂在信号上', w6.doc.lanes[0].nodes[0].ch === 'A');
+  ok('导入 · head/config 原样存进 wj', w6.doc.wj.head.text === 'T' && w6.doc.wj['config.skin'] === 'narrow');
+  ok('导入 · hscale 折进 perUnit', w6.doc.time.perUnit === WJC * 2);
+  ok('导入 · 不画的字段进报告', w6.rep.drop.some(t => /head \/ foot/.test(t)));
+  const back6 = fromWy(JSON.parse(JSON.stringify(toWyOf(w6.doc))));
+  ok('.wy 往返 · wj / nodes / edges 都回来', back6.wj.head.text === 'T' && back6.lanes[0].nodes[0].ch === 'A' && back6.edges[0].spec === '~>');
+  const wj1 = docToWj(demoDoc());
+  ok('导出 · demo 出 WaveJSON', wj1.json.signal.length === 4 && typeof wj1.json.signal[0][0] === 'string');
+  ok('导出 · 报告点了丢什么', wj1.rep.drop.some(t => /模拟信号/.test(t)) && wj1.rep.drop.some(t => /标记/.test(t)));
+  const src = wjToDoc({ signal: [{ name: 'clk', wave: 'pp..pn' }, { name: 'd', wave: '01xZ=2..', data: ['ff', 'IDLE'] }, ['g2', { name: 'q', wave: '0.1.', phase: 0.5 }]] }).doc;
+  const rt = wjToDoc(docToWj(src).json).doc;
+  let wyDiff = '';
+  ok('WaveJSON→.wy→WaveJSON · 形状逐点一致', (() => {
+    const a = allSigs(src.lanes), b = allSigs(rt.lanes);
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].kind === 'analog') continue;                 // 模拟量本就说好丢
+      /* 比「显示出来的东西」，不比内部序号：纯文本标签的取值是第一个没被占用的数，
+         往返两次的标签集合不同就会分到不同序号，可用户看到的仍然是 IDLE。 */
+      for (let t = 0; t <= 200; t += 2) {
+        const va = valueAt(a[i], t), vb = valueAt(b[i], t);
+        if (wjLabel(a[i], va) !== wjLabel(b[i], vb)) { wyDiff = a[i].name + ' @t' + t + ' 显示 ' + wjLabel(a[i], va) + ' vs ' + wjLabel(b[i], vb) + '（值 ' + va + '/' + vb + '）'; return false; }
+      }
+    }
+    return true;
+  })(), wyDiff);
+  const keepDoc = DOC, keepZoom = V.zoom;
+  DOC = wjToDoc({ signal: [{ name: 'a', wave: 'p....' }] }).doc; V.zoom = 40;
+  eq('标尺 · WaveJSON 导入按整格读数（一格 = 1 个显示单位，不会标出 2.5）',
+    [tpu(), DOC.time.grid.step, rulerStep(68 / pxps()) / tpu()], [20, 20, 2]);
+  DOC = demoDoc(); V.zoom = 5;
+  eq('标尺 · 手画文档（perUnit 1 / 一格 5 tick）读数不变，仍是整数',
+    [tpu(), DOC.time.grid.step, rulerStep(68 / pxps()) / tpu()], [1, 5, 20]);
+  const odd = newDoc(); odd.time.grid = { step: 7, sub: 4 }; DOC = odd; V.zoom = 40;
+  eq('标尺 · 格宽凑不出好看的数（7 tick）就退回好看的数，格线照画、读数不硬凑',
+    rulerStep(68 / pxps()), 2);
+  DOC = keepDoc; V.zoom = keepZoom;
+  const wnl = wjToDoc({ signal: [{ name: 'nl', wave: '=23' }] }).doc.lanes[0];
+  eq('导入 · 没有 data 的数据砖留空（WaveDrom 也是空砖，不拿合成序号当标签）',
+    [fmtVal(wnl, wnl.events[0].v), wnl.map.length, wjLabel(wnl, wnl.events[0].v)], ['', 1, '']);
+  const bl = wjToDoc({ signal: [{ name: 'bl', wave: '01.=23' }] }).doc.lanes[0];
+  bl.kind = 'bit'; bl.fmt = 'hex';
+  ok('整条切成 1 bit 后，没有标签的数据格仍然留空（换类型、换格式都不冒出合成序号）',
+    fmtVal(bl, bl.events[bl.events.length - 1].v) === '' && fmtVal(bl, 1) === '1',
+    fmtVal(bl, bl.events[bl.events.length - 1].v));
+
+  const glitch = newSig('gl', 'bit'); glitch.events = [{ t: 0, v: 0 }, { t: 25, v: 1 }, { t: 30, v: 0 }];
+  ok('导出 · demo 的格宽不是 WaveJSON 的一格，报告说清格线会重排', wj1.rep.merge.some(t => /格宽/.test(t)), wj1.rep.merge.join(' | '));
+  const gj = docToWj(Object.assign(newDoc(), { lanes: [glitch], time: { unit: '', perUnit: WJC, t0: 0, t1: 40, grid: { step: WJC, sub: 4 } } }));
+  ok('导出 · 亚周期毛刺用 u/d 表达', gj.json.signal[0].wave[1] === 'u', gj.json.signal[0].wave);
+  ok('导出 · 毛刺走 u/d 也要写进报告（跳变时刻被规范化）', gj.rep.merge.some(t => /u\/d/.test(t)), gj.rep.merge.join(' | '));
+  const wob = newSig('w', 'bit'); wob.events = [{ t: 0, v: 0 }, { t: 25, v: 1 }, { t: 30, v: 0 }, { t: 45, v: 1 }, { t: 50, v: 0 }, { t: 55, v: 1 }];
+  const wo = docToWj(Object.assign(newDoc(), { lanes: [wob], time: { unit: '', perUnit: WJC, t0: 0, t1: 80, grid: { step: WJC, sub: 4 } } }));
+  eq('导出 · 一格两次跳变走 u/d，三次以上才是「稳态优先」',
+    [wo.json.signal[0].wave, wo.rep.merge.some(t => /u\/d/.test(t)), wo.rep.merge.some(t => /稳态优先/.test(t))], ['0u1.', true, true]);
+  const busRt = docToWj((() => { const d = newDoc(); d.time = { unit: '', perUnit: WJC, t0: 0, t1: 40, grid: { step: WJC, sub: 4 } }; const b = newSig('b', 'bus', { fmt: 'sym', map: [{ v: 1, name: 'X' }, { v: 2, name: 'Y' }] }); b.events = [{ t: 0, v: 1 }, { t: 20, v: 2 }]; d.lanes = [b]; return d; })());
+  eq('导出 · 总线用 = 加 data 标签', [busRt.json.signal[0].wave, busRt.json.signal[0].data.join(',')], ['==', 'X,Y']);
+  const dyedDoc = wjToDoc({ signal: [{ name: 'a', wave: 'x3', data: ['A'] }] }).doc;
+  const dyedOut = docToWj(Object.assign(newDoc(), { lanes: [dyedDoc.lanes[0]], time: { unit: '', perUnit: WJC, t0: 0, t1: 40, grid: { step: WJC, sub: 4 } } }));
+  eq('导出 · 数字色不还原要写进报告，不能报「形状无损」',
+    [dyedOut.json.signal[0].wave, dyedOut.rep.drop.some(t => /数据填色/.test(t))], ['x=', true]);
+
+  const uSmall = v1Url({ signal: [{ name: 'a', wave: '01' }] });
+  ok('回 V1 · 小图走 V1 自己的 hash 通道（loadDocFromHash 认得）',
+    uSmall.indexOf('index.html#') === 0 && JSON.parse(decodeURIComponent(uSmall.slice(11))).signal[0].wave === '01', uSmall.slice(0, 40));
+  const uBig = v1Url({ signal: [{ name: new Array(40000).join('x'), wave: '01' }] });
+  ok('回 V1 · 超出 URL 上限就退到共享键 + #handoff',
+    uBig === 'index.html#handoff' && JSON.parse(tryGet(WY_HANDOFF_KEY)).signal[0].wave === '01');
+  try { localStorage.removeItem(WY_HANDOFF_KEY); } catch (e) { }
+
+  /* 逐格对照：在 V1 画好的图点一下进 V2，形状必须一致 —— M1 的验收线。 */
+  const fixBad = []; let fixCells = 0, fixSigs = 0, fixDocs = 0;
+  WJ_FIX.forEach((f, fi) => {
+    let bad = '';
+    const mark = m => { if (!bad) bad = m; if (fixBad.length < 4) fixBad.push(m); };
+    const src = wjLeaves(f.signal, []);
+    let doc;
+    try { doc = wjToDoc(f).doc; } catch (e) { mark('#' + fi + ' 导入抛错：' + e.message); return; }
+    const got = allSigs(doc.lanes);
+    fixDocs++;
+    if (got.length !== src.length) { mark('#' + fi + ' 信号条数 ' + src.length + ' → ' + got.length); return; }
+    src.forEach((e, i) => {
+      if (bad) return;
+      const sig = got[i], cells = wjOracle(e);
+      fixSigs++; fixCells += cells.filter(c => !c.skip).length;
+      const tag = '#' + fi + ' ' + (e.name || '(无名)') + ' 第 ';
+      if (sig.name !== String(e.name == null ? '' : e.name)) { mark(tag + '名字 ' + sig.name + ' vs ' + e.name); return; }
+      cells.forEach((c, k) => {
+        if (bad || c.skip) return;
+        const va = valueAt(sig, c.a), vb = valueAt(sig, c.a + c.cell - 1), at = (k + 1) + ' 格';
+        if (c.s === 'D') {
+          if (va !== vb) { mark(tag + at + '数据块在格内断开（' + va + ' → ' + vb + '）'); return; }
+          const shown = wjLabel(sig, va);
+          if (shown !== c.lab) mark(tag + at + '显示 ' + JSON.stringify(shown) + '，WaveDrom 是 ' + JSON.stringify(c.lab));
+        } else {
+          if (va !== c.s) { mark(tag + at + '格首 ' + va + '，WaveDrom 是 ' + c.s); return; }
+          if (vb !== c.e) mark(tag + at + '格尾 ' + vb + '，WaveDrom 是 ' + c.e);
+        }
+      });
+      /* 相邻两个显式数据字符在 WaveDrom 是两块砖：V2 的砖缝靠段边界撑着，用 laneSegs 直接数段 */
+      for (let k = 1; k < cells.length && !bad; k++) {
+        const c = cells[k], q = cells[k - 1];
+        if (c.skip || q.skip || !c.exp || !q.exp || c.a - q.a !== c.cell) continue;
+        const n = laneSegs(sig, q.a, c.a + c.cell).length;
+        if (n !== 2) mark(tag + (k + 1) + ' 格与前一格并成了 ' + n + ' 块砖（WaveDrom 是两块）');
+      }
+    });
+  });
+  ok('V1 的 ' + fixDocs + ' 个示例逐个导入 · ' + fixSigs + ' 条信号 / ' + fixCells + ' 格显示一致', fixBad.length === 0, fixBad.join(' │ '));
+
+  const msg = `selftest ${pass}/${pass + fail} passed${fail ? ' · ' + fail + ' FAILED' : ''}`;
+  document.title = msg;
+  const el = $('#selftest'); el.className = 'selftest on'; el.textContent = msg + '\n' + out.join('\n');
+  console.log(msg); if (fail) console.log(out.filter(l => l.startsWith('FAIL')).join('\n'));
+  return { pass, fail };
+}
+
+/* ---------- 11b. 交互自检（?selftest=2，需要真实视口）----------
+   走的是真事件：点按钮 → 派发 PointerEvent → 断言 DOC 变了，最后跑一遍光栅化。 */
+async function uiTest() {
+  const out = []; let pass = 0, fail = 0;
+  const ok = (n, c, e) => { c ? (pass++, out.push('ok   ' + n)) : (fail++, out.push('FAIL ' + n + (e ? '  → ' + e : ''))); };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const sc = $('#scroll');
+  sc.setPointerCapture = () => { }; sc.releasePointerCapture = () => { };   // 合成事件没有真 pointerId
+
+  DOC = newDoc(); V.tool = 'paint'; V.paintVal = 1; afterLoad(); render();
+  ok('新文档是空的', allSigs().length === 0 && $('#empty').hidden === false);
+  ok('空文档提示层可见', getComputedStyle($('#empty')).display !== 'none');
+
+  const add = () => document.querySelector('[data-act="add-sig"]').click();
+  add(); add(); render(); await wait(30);
+  ok('点「＋ 信号」加了两条', allSigs().length === 2, allSigs().map(s => s.name).join(','));
+  ok('加完信号后提示层收起', getComputedStyle($('#empty')).display === 'none');
+
+  const sig = allSigs()[0];
+  const clientX = t => sc.getBoundingClientRect().left + V.nameW + valW() - sc.scrollLeft + xOf(t);
+  const rowEl = () => document.querySelector('[data-row="' + sig.id + '"]');
+  const fire = (type, t) => {
+    const r = rowEl().getBoundingClientRect();
+    rowEl().dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: clientX(t), clientY: r.top + r.height / 2, button: 0, pointerId: 3, isPrimary: true }));
+  };
+  fire('pointerdown', 20); fire('pointermove', 40); fire('pointermove', 60); fire('pointerup', 60);
+  await wait(40);
+  ok('画笔 20→60 写成 1', valueAt(sig, 30) === 1 && valueAt(sig, 59) === 1, JSON.stringify(sig.events));
+  ok('画笔区间外仍是 x', valueAt(sig, 70) === 'x');
+  V.paintVal = 0;
+  fire('pointerdown', 80); fire('pointermove', 100); fire('pointerup', 100); await wait(40);
+  ok('再画 0 覆盖 80→100', valueAt(sig, 90) === 0 && valueAt(sig, 110) === 'x');
+  ok('画笔后标了脏', $('#dirtyDot').hidden === false);
+
+  /* 缩放以光标为锚 */
+  V.zoom = 4; render();
+  const anchor = 120, px = clientX(anchor) - sc.getBoundingClientRect().left - V.nameW - valW();
+  const tBefore = tOf(sc.scrollLeft + px);
+  sc.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -240, clientX: clientX(anchor), clientY: 200 }));
+  await wait(40);
+  const tAfter = tOf(sc.scrollLeft + px);
+  ok('滚轮放大后锚点时刻不变', V.zoom > 4 && Math.abs(tAfter - tBefore) < 1.5, tBefore.toFixed(1) + ' → ' + tAfter.toFixed(1) + ' zoom=' + V.zoom.toFixed(2));
+
+  /* 键盘流 */
+  const key = k => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+  const g0 = DOC.time.grid.step; key('g'); await wait(20);
+  ok('g 改网格步长', DOC.time.grid.step !== g0, g0 + ' → ' + DOC.time.grid.step);
+  V.cursorT = 40; key('m'); await wait(20);
+  ok('m 加标记旗', DOC.markers.length === 1 && DOC.markers[0].t === 40, JSON.stringify(DOC.markers));
+  key('ArrowRight'); await wait(20);
+  ok('→ 游标走一格', V.cursorT === 40 + Math.max(1, DOC.time.grid.step), String(V.cursorT));
+  V.cursorT = 0; key(']'); await wait(20);
+  ok('] 跳到下一个标记', V.cursorT === 40, String(V.cursorT));
+  key('['); await wait(20);
+  ok('[ 往前没有标记则不动', V.cursorT === 40, String(V.cursorT));
+  key('f'); await wait(20);
+  ok('f 适配全部', Math.abs((DOC.time.t1 - DOC.time.t0) * pxps() - vpW()) < 6, pxps().toFixed(2));
+
+  /* 撤销 */
+  const n0 = allSigs()[0].events.length;
+  V.paintVal = 1; fire('pointerdown', 140); fire('pointermove', 160); fire('pointerup', 160); await wait(40);
+  const n1 = allSigs()[0].events.length;
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })); await wait(40);
+  ok('Ctrl+Z 撤销画笔', n1 !== n0 && allSigs()[0].events.length === n0, n0 + '/' + n1 + '/' + allSigs()[0].events.length);
+
+  /* 光栅化导出：真的走 canvas */
+  const blob = await pngBlob(2, { width: 900, a: 0, b: DOC.time.t1 });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  ok('PNG 光栅化成功', bytes.length > 5000 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47, bytes.length + 'B');
+  const back = pngExtractWy(bytes);
+  ok('PNG 里的 .wy 能读回来（拖图可续编辑）', !!back && JSON.parse(back).meta.name === DOC.meta.name, back ? 'ok' : 'null');
+
+  /* 拖文件进窗口：.wy 与导出的 PNG 两条路都走真 readFile（异步，所以轮询而不是死等） */
+  const painted = JSON.stringify(toWy());
+  const waitFor = async (pred, ms) => { const e = Date.now() + (ms || 2500); while (Date.now() < e) { if (pred()) return true; await wait(25); } return false; };
+  const drop = async (file) => {
+    const dt = new DataTransfer(); dt.items.add(file);
+    DOC = newDoc(); render();
+    document.querySelectorAll('.toast').forEach(t => t.remove());      // 别拿上一条的 toast 当本次结果
+    window.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    return waitFor(() => allSigs().length > 0 || document.querySelector('.toast'));
+  };
+  await drop(new File([painted], 'painted.wy', { type: 'application/json' }));
+  ok('拖 .wy 进窗口能打开（文档名跟文件名）', DOC.meta.name === 'painted' && allSigs().length === 2, DOC.meta.name + ' / ' + allSigs().length);
+  await drop(new File([bytes], 'shot.png', { type: 'image/png' }));
+  ok('拖导出的 PNG 回来能续编辑', allSigs().length === 2 && valueAt(allSigs()[0], 30) === 1,
+    allSigs().length + ' 信号, val@30=' + (allSigs()[0] ? valueAt(allSigs()[0], 30) : '-'));
+  await drop(new File(['<?xml?><svg/>'], 'plain.svg'));
+  ok('拖无数据的 SVG 会拒绝而不是白屏', allSigs().length === 0 && !!document.querySelector('.toast'));
+
+  /* ---- M1：V1 那边的图进来 / 兼容组报告先行 / 顶栏 V1 交接 ---- */
+  await drop(new File(['{ signal: [ { name: "clk", wave: "pp..pn" }, { name: "d", wave: "01x=2", data: ["IDLE"] } ] }'],
+    'from-v1.json', { type: 'application/json' }));
+  ok('拖 WaveJSON 进窗口走的是同一条打开路径', allSigs().length === 2 && valueAt(allSigs()[0], 45) === 1,
+    allSigs().length + ' 信号 · clk@45=' + (allSigs()[0] ? valueAt(allSigs()[0], 45) : '-'));
+  ok('导入的图标了来源，值列照事件表出', DOC.meta.origin === 'wavejson' && DOC.time.grid.step === WJC,
+    DOC.meta.origin + ' / step=' + DOC.time.grid.step);
+  await drop(new File(['{ signal: [ { name: "n", wave: "01" } ] }'], 'legacy.wave'));
+  ok('.wave（归 V1 的后缀）在 V2 是只读导入', allSigs().length === 1 && DOC.meta.origin === 'wavejson');
+
+  document.querySelector('[data-act="sample"]').click();
+  document.querySelector('[data-act="to-v1"]').click();
+  ok('顶栏 V1：先出报告，不当场跳走', $('#wjrep').classList.contains('on') && /兼容性报告/.test($('#wjrepTitle').textContent));
+  ok('报告分组列了每一条损失', $$('#wjrep .sec li').length >= 3 && $$('#wjrep .sec h6').length >= 1,
+    $$('#wjrep .sec li').length + ' 条');
+  ok('报告只给一个主按钮（一屏一件事）', $$('#wjrep .rep-f .btn.pri').length === 1 && $$('#wjrep .rep-f .btn').length === 2);
+  const handUrl = v1Url(docToWj(DOC).json);
+  ok('交接链接是 V1 认得的 hash，且图在里面', handUrl.indexOf('index.html#') === 0 &&
+    JSON.parse(decodeURIComponent(handUrl.slice(11))).signal.length === 4, handUrl.slice(0, 30));
+  $('#wjrep').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  ok('点遮罩也能关（Esc 同源逻辑）', !$('#wjrep').classList.contains('on'));
+
+  /* ---- 一根线一种画法，但类型是用户可以整条改的属性（2026-10-10 已定） ---- */
+  const mixR = wjToDoc({ signal: [{ name: 'm', wave: '01=2', data: ['A'] }] });
+  ok('混排导入的报告除了说降级，还给出去哪改', /只有一种画法/.test(mixR.rep.drop.join(' ')) &&
+    /改成 1 bit/.test(mixR.rep.drop.join(' ')), mixR.rep.drop.join(' | ').slice(0, 60));
+  const keepUi = DOC; DOC = mixR.doc; V.sel = DOC.lanes[0].id; render(); renderProps();
+  document.querySelector('[data-kind="bit"]').click();
+  ok('属性面板改类型：整条切回电平，线真的画得出来', DOC.lanes[0].kind === 'bit' &&
+    bitPath(laneSegs(DOC.lanes[0], DOC.time.t0, DOC.time.t1), 10, 30).length > 0, DOC.lanes[0].kind);
+  DOC.lanes[0].bits = 2; renderProps();
+  document.querySelector('[data-kind="bus"]').click();
+  ok('切回总线按默认定格式：位宽 ≤2 给 bin', DOC.lanes[0].kind === 'bus' && DOC.lanes[0].fmt === 'bin',
+    DOC.lanes[0].kind + ' / ' + DOC.lanes[0].fmt);
+  DOC = keepUi; V.sel = null; render(); renderProps();
+
+  const msg = `uiTest ${pass}/${pass + fail} passed${fail ? ' · ' + fail + ' FAILED' : ''}`;
+  document.title = msg;
+  const el = $('#selftest'); el.className = 'selftest on'; el.textContent = msg + '\n' + out.join('\n');
+  console.log(msg); if (fail) console.log(out.filter(l => l.startsWith('FAIL')).join('\n'));
+  return { pass, fail };
+}
+function toWyOf(d) {
+  const keep = DOC; DOC = d; const o = toWy(); DOC = keep; return o;
+}
+function sigById2(doc, name) { return allSigs(doc.lanes).find(s => s.name === name); }
+function basePng() {
+  /* 1×1 透明 PNG，用来验 iTXt 插拔 */
+  const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=';
+  const bin = atob(b64), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/* ---------- 12. 启动 ---------- */
+function boot() {
+  readTokens();
+  const q = new URLSearchParams(location.search);
+  if (q.get('demo') === '1') DOC = demoDoc();
+  const saved = tryGet('wy-theme'); if (q.get('theme') === 'dark' || (!q.get('theme') && saved === 'dark')) DOC.view.theme = 'dark';
+  document.body.dataset.theme = DOC.view.theme;
+  V.cursorT = (DOC.view.cursors[0] || { t: 0 }).t;
+  readTokens();
+  syncName(); bindCanvas(); bindFiles(); bindTopbar(); bindRep();
+  handoffFromHash();
+  fitAll(false);
+  render(); renderValPick(); clearDirty();
+  /* 验证钩子：?expsvg=<px/显示单位> → 页面只留一张导出 SVG，headless 对照脚本直接取图。
+     M1 用它把「V1 的预览渲染」和「V2 导入同一份 WaveJSON 后的渲染」按同样格宽拼成一张图。 */
+  if (q.has('expsvg')) {
+    V.zoom = Math.max(MINZOOM, Math.min(MAXZOOM, parseFloat(q.get('expsvg')) || 40)); render();
+    const ex = buildExportSvg({ a: DOC.time.t0, b: DOC.time.t1, width: Math.max(1, (DOC.time.t1 - DOC.time.t0) * pxps()) });
+    const holder = document.createElement('div');
+    holder.id = 'expsvg';
+    holder.style.cssText = 'position:fixed;inset:0;z-index:9999;overflow:auto;background:' + TOK.waveBg;
+    holder.innerHTML = ex.str;
+    document.body.appendChild(holder);            // 不拆 app 本体：resize / render 钩子还会摸 #scroll
+    document.title = 'expsvg ' + Math.round(ex.w) + 'x' + Math.round(ex.h);
+    return;
+  }
+  $$('#rail button').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === V.tool || (b.getAttribute('data-tool') === 'snap' && V.snap)));
+  if (q.get('selftest') === '1') setTimeout(selftest, 60);
+  if (q.get('selftest') === '2') setTimeout(uiTest, 120);
+}
+function bindTopbar() {
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-act]'); if (!b) return;
+    const a = b.getAttribute('data-act');
+    if (a === 'theme') { trySet('wy-theme', DOC.view.theme === 'dark' ? 'light' : 'dark'); setTheme(DOC.view.theme === 'dark' ? 'light' : 'dark'); }
+    else if (a === 'sample') { snap(); DOC = demoDoc(); afterLoad(); clearDirty(); syncName(); }
+    else if (a === 'new') { snap(); DOC = newDoc(); afterLoad(); clearDirty(); syncName(); }
+    else if (a === 'open-wy') $('#fileInput').click();
+    else if (a === 'export-wj') exportWj();
+    else if (a === 'to-v1') goV1();
+    else if (a === 'save') doSave(true, false);
+    else if (a === 'save-as') doSave(false, true);
+    else if (a === 'svg') exportSvg();
+    else if (a === 'png2') exportPng(2);
+    else if (a === 'png4') exportPng(4);
+    else if (a === 'add-sig') {
+      const kinds = ['bit', 'bus', 'clock', 'analog'];
+      const cur = V.sel ? sigById(V.sel) : null;
+      addSig(cur ? kinds[(kinds.indexOf(cur.kind) + 1) % 4] : 'bit');
+    }
+    else if (a === 'add-group') { snap(); DOC.lanes.push(newGroup('分组' + (DOC.lanes.filter(n => n.lanes).length + 1), [])); render(); markDirty(); }
+  });
+}
+window.addEventListener('beforeunload', ev => { if (V.dirty) { ev.preventDefault(); ev.returnValue = ''; } });
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+window.WY = { get DOC() { return DOC; }, set DOC(v) { DOC = v; }, V, render, selftest, toWy, fromWy, setRange, laneSegs, valueAt, fmtVal, parseVal,
+  newSig, demoDoc, buildExportSvg, allSigs, flat, pngBlob, pngExtractWy, wyText, loadWyText, sigById,
+  WJC, parseLoose, wjToDoc, docToWj, wjLabel, loadAnyText, showWjRep, closeWjRep, exportWj, goV1, v1Url, handoffFromHash, WY_HANDOFF_KEY };
+</script>
+</body>
+</html>
