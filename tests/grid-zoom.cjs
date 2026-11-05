@@ -24,6 +24,7 @@ const server = http.createServer((req, res) => {
         head:{tick:100000},foot:{tick:100000}}));
       update(true);
     });
+    await page.waitForFunction(() => +$('#wv0 svg')?.getAttribute('width') > 4000 && $('#wv0').textContent.includes('100000'));
     const original = await page.evaluate(() => JSON.stringify(buildJSON()));
     const preview = await page.locator('#wv0').innerHTML();
     await page.evaluate(() => { $('#gridScroll').scrollLeft = 800; });
