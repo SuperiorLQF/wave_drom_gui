@@ -48,7 +48,7 @@ const server = http.createServer((req, res) => {
     const guarded = await page.evaluate(() => {
       const before = JSON.stringify(buildJSON()), zoom = gridZoom;
       const cell = document.querySelector('.cell');
-      for (const modifiers of [{altKey:true}, {metaKey:true}, {shiftKey:true}, {ctrlKey:true,altKey:true}]) {
+      for (const modifiers of [{metaKey:true}, {shiftKey:true}, {ctrlKey:true,altKey:true}]) {
         cell.dispatchEvent(new WheelEvent('wheel', {bubbles:true,cancelable:true,deltaY:120,...modifiers}));
       }
       cell.dispatchEvent(new WheelEvent('wheel', {bubbles:true,cancelable:true,deltaY:0,deltaX:100}));

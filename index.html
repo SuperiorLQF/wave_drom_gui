@@ -1463,6 +1463,7 @@ html[data-mobile] {
         <button class="btn ghost" data-act="add-col" data-n="4" data-i18n-title="网格增加 4 拍">＋4</button>
       </div>
       <button class="chain-pill" id="chainBtn" data-act="toggle-autochain" aria-pressed="false" title="自动连续模式：锁定一格连续给状态、逐格右移（中键点单元格可一步启动+选中）"><span class="chain-title"><span class="ct-full">自动</span><span class="ct-short">自动</span></span></button>
+      <span class="hint" title="Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形" data-i18n-title="Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形">Alt</span>
       <button class="btn ghost editor-zoom" id="gridZoomReset" title="Ctrl＋滚轮缩放时间轴 · 点击恢复 100%" data-i18n-title="Ctrl＋滚轮缩放时间轴 · 点击恢复 100%" aria-label="重置编辑网格缩放" data-i18n-aria="重置编辑网格缩放">100%</button>
       <span class="hint" id="hintBox" tabindex="0" aria-label="操作说明" data-i18n-aria="操作说明"><span data-i18n="说明">说明</span><span class="hint-pop" role="tooltip" data-i18n="左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做">左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做</span></span>
     </div>
@@ -1693,6 +1694,8 @@ try { module.exports = WaveSkin; } catch(err) {}
 /* WaveDrom 可视化编辑器 —— 单文件应用逻辑 */
 /* ---------- 界面语言（顶栏地球按钮）：中文为基准，英文走词典；默认跟随系统 ---------- */
 const I18N_EN = {
+  '下一格是间隙标记，无法在保留间隙的同时恢复单格状态': 'The next cell is a gap marker; a single-cell change cannot preserve that gap and restore the state.',
+  'Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形': 'Alt + wheel: edit one cell; Alt + drag a boundary: delay the rest of this signal',
   '路径形状': 'Path shape', '箭头方向': 'Arrow direction', '平滑曲线': 'Smooth curve',
   '先横后竖': 'Horizontal then vertical', '先竖后横': 'Vertical then horizontal',
   '横→竖→横': 'Horizontal → vertical → horizontal', '范围标记': 'Range marker',
@@ -5702,14 +5705,35 @@ function syncDeglitchUI() {
   const s = document.getElementById('dgAutoState');
   if (s) s.textContent = i18n(on ? '开' : '关');
 }
-function paintCell(lane, t, glyph) {
+function effectiveSlotAt(lane, t) {
+  for (let i = t; i >= 0; i--) {
+    const slot = lane.slots[i];
+    if (slot && !['.', '|', '<', '>'].includes(slot.glyph)) return slot;
+  }
+  return { glyph: 'x' };
+}
+function paintCell(lane, t, glyph, { singleCell = false } = {}) {
+  // A continuation has no state of its own. Materialize the original state at
+  // the next cell before changing this one, so later cells remain untouched.
+  const original = singleCell ? { ...effectiveSlotAt(lane, t) } : null;
+  if (singleCell && original.glyph === glyph) return;
+  if (singleCell && ['<', '>'].includes(lane.slots[t]?.glyph)) return;
+  let restoreAt = t + 1;
+  while (singleCell && ['<', '>'].includes(lane.slots[restoreAt]?.glyph)) restoreAt++;
+  if (singleCell && lane.slots[restoreAt]?.glyph === '|') {
+    toast(i18n('下一格是间隙标记，无法在保留间隙的同时恢复单格状态'), true);
+    return;
+  }
+  const restore = singleCell && restoreAt < laneLen(lane) &&
+    (!lane.slots[restoreAt] || lane.slots[restoreAt].glyph === '.')
+    ? { ...original, ...lane.slots[restoreAt], glyph: original.glyph } : null;
   commitTag = 'paint';
   while (lane.slots.length <= t) lane.slots.push(null);
   const slot = { glyph };
   if (keepLabel) {
     /* 换字符默认丢标签；开启标签保持后，数据字符间换色留住标签，
        途经 x/z 或被延续符 . 覆盖时暂存（仅限当前选中格或拖动格），切回数据字符恢复。 */
-    const prev = lane.slots[t];
+    const prev = original || lane.slots[t];
     const prevLabel = prev && prev.label;
     const stashed = labelStash && labelStash.laneId === lane.id && labelStash.t === t ? labelStash.label : undefined;
     const carried = prevLabel !== undefined && prevLabel !== null ? prevLabel : stashed;
@@ -5724,8 +5748,9 @@ function paintCell(lane, t, glyph) {
     }
   }
   lane.slots[t] = slot;
+  if (restore) lane.slots[restoreAt] = restore;
   lane.len = Math.max(lane.len || 0, t + 1);
-  deglitchRun(lane, t); // 电平写入后就地归一化所在段（同一提交内，撤销一步整体回退）
+  if (!singleCell) deglitchRun(lane, t); // 单格微调必须保留相邻格，不做整段归一化
   paintedSinceDown = true;
   /* 拖涂每跨一格都会进来：直接 update() 会每格全量重建网格 + 全文序列化，
      大文档拖动必掉帧。rAF 合帧后状态照常累改，一帧只渲染一次 */
@@ -6463,10 +6488,11 @@ function openLanePropPop(lane, anchor) {
 /* Boundary dragging moves one event through its adjacent continuation cells.
    Keep the document length and neighbouring events intact; labels and the event's
    node travel with it, while other nodes/metadata form hard stops. */
-function movableBoundary(lane, t) {
-  if (t <= 0 || lane.slots.some(s => s && (s.glyph === '<' || s.glyph === '>'))) return null;
+function movableBoundary(lane, t, shiftTail = false) {
+  if ((!shiftTail && t <= 0) || lane.slots.some(s => s && (s.glyph === '<' || s.glyph === '>'))) return null;
   const event = lane.slots[t];
   if (!event) return null;
+  if (shiftTail && !['.', '|', '<', '>'].includes(event.glyph)) return { lane, t, min: t, max: Infinity, shiftTail: true };
   const level = g => '0lL'.includes(g) ? 0 : '1hH'.includes(g) ? 1 : null;
   let prev = t - 1;
   while (prev >= 0 && lane.slots[prev] && lane.slots[prev].glyph === '.') prev--;
@@ -6483,7 +6509,7 @@ function movableBoundary(lane, t) {
   return min < max ? { lane, t, min, max } : null;
 }
 function boundaryAt(ev) {
-  if (state.tool.type !== 'select' || autoChain || ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return null;
+  if (state.tool.type !== 'select' || autoChain || ev.ctrlKey || ev.metaKey || ev.shiftKey) return null;
   const cell = ev.target.closest('.cell');
   if (!cell) return null;
   const lane = getLaneById(+cell.dataset.lane);
@@ -6502,7 +6528,7 @@ function boundaryAt(ev) {
     const glyph = lane.slots[k] && lane.slots[k].glyph;
     const edgeX = pos.x + (glyph === '0' || glyph === '1' ? Math.min(CELLW * 0.15, pos.w * 0.25) : 0);
     if (Math.min(Math.abs(x - pos.x), Math.abs(x - edgeX)) > Math.min(6, pos.w * 0.25)) continue;
-    const hit = movableBoundary(lane, k);
+    const hit = movableBoundary(lane, k, ev.altKey);
     if (hit) return hit;
   }
   return null;
@@ -6529,7 +6555,7 @@ function bindBoundaryDrag(inner) {
     clearTimeout(saveTimer); clearTimeout(previewTimer);
     painting = false; extendMode = false;
     drag = { ...hit, x: ev.clientX, current: hit.t, slots: hit.lane.slots.slice(),
-      nodes: { ...hit.lane.nodeByT }, step: gridCellW() * (hit.lane.period || 1), scroll: $('#gridScroll').scrollLeft };
+      nodes: { ...hit.lane.nodeByT }, len: hit.lane.len, step: gridCellW() * (hit.lane.period || 1), scroll: $('#gridScroll').scrollLeft };
     document.body.classList.add('boundary-dragging');
   }, true);
   window.addEventListener('mousemove', ev => {
@@ -6538,14 +6564,24 @@ function bindBoundaryDrag(inner) {
     const offset = ev.clientX - drag.x + $('#gridScroll').scrollLeft - drag.scroll;
     const t = Math.max(drag.min, Math.min(drag.max, drag.t + Math.round(offset / drag.step)));
     if (t === drag.current) return;
-    const slots = drag.slots.slice();
-    slots[drag.t] = { glyph: '.' };
-    slots[t] = drag.slots[drag.t];
-    drag.lane.slots = slots;
     drag.lane.nodeByT = { ...drag.nodes };
-    if (t !== drag.t && drag.nodes[drag.t]) {
-      delete drag.lane.nodeByT[drag.t];
-      drag.lane.nodeByT[t] = drag.nodes[drag.t];
+    if (drag.shiftTail) {
+      const count = t - drag.t;
+      drag.lane.slots = drag.slots.slice(0, drag.t).concat(
+        Array.from({ length: count }, (_, i) => ({ glyph: drag.t === 0 && i === 0 ? 'x' : '.' })),
+        drag.slots.slice(drag.t));
+      drag.lane.len = Math.max(drag.len || 0, drag.slots.length) + count;
+      drag.lane.nodeByT = Object.fromEntries(Object.entries(drag.nodes).map(([key, letter]) =>
+        [+key >= drag.t ? +key + count : key, letter]));
+    } else {
+      const slots = drag.slots.slice();
+      slots[drag.t] = { glyph: '.' };
+      slots[t] = drag.slots[drag.t];
+      drag.lane.slots = slots;
+      if (t !== drag.t && drag.nodes[drag.t]) {
+        delete drag.lane.nodeByT[drag.t];
+        drag.lane.nodeByT[t] = drag.nodes[drag.t];
+      }
     }
     drag.current = t;
     paintedSinceDown = true;
@@ -6560,6 +6596,7 @@ function bindBoundaryDrag(inner) {
     if (cancel || finished.current === finished.t) {
       finished.lane.slots = finished.slots;
       finished.lane.nodeByT = finished.nodes;
+      finished.lane.len = finished.len;
       lanePosCache = new WeakMap();
       renderGrid(); renderCode(); renderPreview();
       persist();
@@ -6953,7 +6990,7 @@ function bindGrid() {
      ② 非自动模式悬停任意格（无需点选，不弹面板）；
      ③ 自动模式当前锁定格（chainSel，就地变换不右移；面板开着则跟随刷新）。 */
   inner.addEventListener('wheel', ev => {
-    if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey || ev.deltaY === 0) return;
+    if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.deltaY === 0) return;
     const cell = ev.target.closest('.cell');
     if (!cell) return;
     const cLane = +cell.dataset.lane, cT = +cell.dataset.t;
@@ -6974,7 +7011,7 @@ function bindGrid() {
        让 paintCell 的标签暂存认得它；换格滚动则先作废上一格的暂存。 */
     dropLabelStash(cLane, cT);
     wheelCell = { laneId: cLane, t: cT };
-    paintCell(lane, cT, next); // 就地变换，不触发 advanceChain（滚轮是微调手势，不右移）
+    paintCell(lane, cT, next, { singleCell: ev.altKey }); // 就地变换，不触发 advanceChain（滚轮是微调手势，不右移）
     wheelCell = null;
     if (onChainSel) restoreChainSelHighlight(); // paintCell 重建 DOM，重贴当前格高亮
     if (onPopCell) reopenPopAt(lane, cT); // 选中格滚轮重开面板；悬停切换不弹面板
