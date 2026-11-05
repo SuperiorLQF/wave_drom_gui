@@ -6490,6 +6490,39 @@ function openLanePropPop(lane, anchor) {
 /* Boundary dragging moves one event through its adjacent continuation cells.
    Keep the document length and neighbouring events intact; labels and the event's
    node travel with it, while other nodes/metadata form hard stops. */
+function crowdedBoundary(lane, t) {
+  const anchors = [];
+  for (let i = 0; i < laneLen(lane); i++) {
+    const slot = lane.slots[i];
+    if (slot && slot.glyph !== '.' || slot && Object.entries(slot).some(([k, value]) =>
+      k !== 'glyph' && !(k === 'label' && (value === '' || value == null))) || lane.nodeByT[i]) {
+      anchors.push({ t: i, slot, node: lane.nodeByT[i],
+        fixed: !slot || slot.glyph === '.' || slot.glyph === '|' });
+    }
+  }
+  const index = anchors.findIndex(anchor => anchor.t === t);
+  if (index <= 0) return null;
+  anchors[0].fixed = true; // Keep the initial state and document origin intact.
+  let min = 0, max = Infinity;
+  for (let i = 0; i < index; i++) if (anchors[i].fixed) min = Math.max(min, anchors[i].t + index - i);
+  for (let i = index + 1; i < anchors.length; i++) if (anchors[i].fixed) max = Math.min(max, anchors[i].t - (i - index));
+  return { lane, t, min, max, locked: min === max, ripple: { anchors, index } };
+}
+function moveCrowdedBoundary(drag, target) {
+  const { anchors, index } = drag.ripple;
+  const positions = anchors.map(anchor => anchor.t);
+  positions[index] = target;
+  for (let i = index - 1; i >= 0; i--) positions[i] = Math.min(positions[i], positions[i + 1] - 1);
+  for (let i = index + 1; i < positions.length; i++) positions[i] = Math.max(positions[i], positions[i - 1] + 1);
+  const length = Math.max(drag.len || 0, drag.slots.length, positions[positions.length - 1] + 1);
+  drag.lane.slots = Array.from({ length }, () => ({ glyph: '.' }));
+  drag.lane.nodeByT = {};
+  anchors.forEach((anchor, i) => {
+    drag.lane.slots[positions[i]] = anchor.slot;
+    if (anchor.node) drag.lane.nodeByT[positions[i]] = anchor.node;
+  });
+  drag.lane.len = length;
+}
 function movableBoundary(lane, t, shiftTail = false) {
   if ((!shiftTail && t <= 0) || lane.slots.some(s => s && (s.glyph === '<' || s.glyph === '>'))) return null;
   const event = lane.slots[t];
@@ -6502,21 +6535,33 @@ function movableBoundary(lane, t, shiftTail = false) {
   const left = lane.slots[prev];
   if (!left || !(isData(left.glyph) && isData(event.glyph) ||
     level(left.glyph) !== null && level(event.glyph) !== null && level(left.glyph) !== level(event.glyph))) return null;
+  // Consecutive one-cycle bus words still need a usable drag target. Push
+  // only the neighbouring words that would collide, keeping every label.
+  if (isData(event.glyph) && (isData(left.glyph) && prev === t - 1 || isData(lane.slots[t + 1]?.glyph)) ||
+    isData(left.glyph) && prev === t - 1) return crowdedBoundary(lane, t);
   const plain = (i, repeated) => {
     const s = lane.slots[i];
     return s && (s.glyph === '.' || (repeated === '0' || repeated === '1') && s.glyph === repeated) &&
-      Object.keys(s).every(k => k === 'glyph') && !lane.nodeByT[i];
+      Object.entries(s).every(([k, value]) => k === 'glyph' || k === 'label' && (value === '' || value == null)) &&
+      !lane.nodeByT[i];
   };
   // Explicit 0000/1111 plateaus are visually identical to 0.../1....
   // Use their actual transition boundaries, while retaining metadata barriers.
   if (left.glyph === '0' || left.glyph === '1') {
-    while (prev > 0 && plain(prev, left.glyph) &&
-      ['.', left.glyph].includes(lane.slots[prev - 1]?.glyph)) prev--;
+    while (prev > 0 && plain(prev, left.glyph)) {
+      let earlier = prev - 1;
+      while (earlier >= 0 && lane.slots[earlier]?.glyph === '.' && plain(earlier, left.glyph)) earlier--;
+      if (lane.slots[earlier]?.glyph !== left.glyph) break;
+      prev = earlier;
+    }
   }
   let min = t, max = t;
   while (min > prev + 1 && plain(min - 1, left.glyph)) min--;
   while (max + 1 < lane.slots.length && plain(max + 1, event.glyph)) max++;
-  return { lane, t, min, max, locked: min === max };
+  // A one-cycle pulse is a valid edge, even with no continuation cells.
+  // Preserve it by pushing only the adjacent transitions that would collide.
+  if (min === max) return crowdedBoundary(lane, t);
+  return { lane, t, min, max, locked: false };
 }
 function boundaryAt(ev) {
   if (state.tool.type !== 'select' || autoChain || ev.ctrlKey || ev.metaKey || ev.shiftKey) return null;
@@ -6566,7 +6611,8 @@ function bindBoundaryDrag(inner) {
     }
   });
   inner.addEventListener('mouseleave', clearHover);
-  inner.addEventListener('mousedown', ev => {
+  inner.addEventListener('pointerdown', ev => {
+    if (drag) { ev.preventDefault(); ev.stopImmediatePropagation(); finish(true); return; }
     suppressClick = false;
     if (ev.button !== 0) return;
     const hit = boundaryAt(ev);
@@ -6581,17 +6627,21 @@ function bindBoundaryDrag(inner) {
     clearTimeout(saveTimer); clearTimeout(previewTimer);
     painting = false; extendMode = false;
     drag = { ...hit, x: ev.clientX, current: hit.t, slots: hit.lane.slots.slice(),
-      nodes: { ...hit.lane.nodeByT }, len: hit.lane.len, step: gridCellW() * (hit.lane.period || 1), scroll: $('#gridScroll').scrollLeft };
+      nodes: { ...hit.lane.nodeByT }, len: hit.lane.len, pointerId: ev.pointerId,
+      step: gridCellW() * (hit.lane.period || 1), scroll: $('#gridScroll').scrollLeft };
+    try { inner.setPointerCapture(ev.pointerId); } catch (e) { /* pointer already released */ }
     document.body.classList.add('boundary-dragging');
   }, true);
-  window.addEventListener('mousemove', ev => {
-    if (!drag) return;
+  window.addEventListener('pointermove', ev => {
+    if (!drag || drag.pointerId !== ev.pointerId) return;
     ev.preventDefault(); ev.stopImmediatePropagation();
     const offset = ev.clientX - drag.x + $('#gridScroll').scrollLeft - drag.scroll;
     const t = Math.max(drag.min, Math.min(drag.max, drag.t + Math.round(offset / drag.step)));
     if (t === drag.current) return;
     drag.lane.nodeByT = { ...drag.nodes };
-    if (drag.shiftTail) {
+    if (drag.ripple) {
+      moveCrowdedBoundary(drag, t);
+    } else if (drag.shiftTail) {
       const count = t - drag.t;
       drag.lane.slots = drag.slots.slice(0, drag.t).concat(
         Array.from({ length: count }, (_, i) => ({ glyph: drag.t === 0 && i === 0 ? 'x' : '.' })),
@@ -6603,7 +6653,9 @@ function bindBoundaryDrag(inner) {
       const slots = drag.slots.slice();
       // Replace the swept interval, not just the original event: redundant
       // explicit levels inside it must not leave a second transition behind.
-      for (let i = Math.min(t, drag.t); i <= Math.max(t, drag.t); i++) slots[i] = { glyph: '.' };
+      for (let i = Math.min(t, drag.t); i <= Math.max(t, drag.t); i++) {
+        slots[i] = i === drag.t ? { glyph: '.' } : { ...slots[i], glyph: '.' };
+      }
       slots[t] = drag.slots[drag.t];
       drag.lane.slots = slots;
       if (t !== drag.t && drag.nodes[drag.t]) {
@@ -6619,6 +6671,7 @@ function bindBoundaryDrag(inner) {
   const finish = cancel => {
     if (!drag) return;
     const finished = drag; drag = null;
+    try { if (inner.hasPointerCapture(finished.pointerId)) inner.releasePointerCapture(finished.pointerId); } catch (e) { /* capture already lost */ }
     document.body.classList.remove('boundary-dragging');
     suppressClick = true; paintedSinceDown = true;
     if (cancel || finished.current === finished.t) {
@@ -6633,7 +6686,9 @@ function bindBoundaryDrag(inner) {
       update(true);
     }
   };
-  window.addEventListener('mouseup', ev => { if (ev.button === 0) finish(false); }, true);
+  window.addEventListener('pointerup', ev => { if (drag && drag.pointerId === ev.pointerId) finish(false); }, true);
+  window.addEventListener('pointercancel', ev => { if (drag && drag.pointerId === ev.pointerId) finish(true); }, true);
+  inner.addEventListener('lostpointercapture', ev => { if (drag && drag.pointerId === ev.pointerId) finish(true); });
   window.addEventListener('blur', () => finish(true));
   window.addEventListener('keydown', ev => {
     if (!drag) return;

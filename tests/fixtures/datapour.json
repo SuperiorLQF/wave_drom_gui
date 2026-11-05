@@ -1,0 +1,10 @@
+{
+  "signal": [
+    { "name": "clk_datapour", "wave": "p......pp..." },
+    { "name": "fstm2bba_ch_en", "wave": "0.1........." },
+    { "name": "fstm2bba_vld", "wave": "0...1...0..." },
+    { "name": "fstm2bba_data", "wave": "x...222=x...", "data": ["DAT0", "DAT1", "DAT2", "DAT3"] },
+    { "name": "fstm2bba_id", "wave": "x...222=x...", "data": ["0", "1", "2", "3"] },
+    { "name": "bba2fstm_req[0]", "wave": "0...1...0..." }
+  ]
+}

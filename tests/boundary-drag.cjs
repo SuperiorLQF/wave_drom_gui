@@ -97,8 +97,9 @@ const server = http.createServer((req, res) => {
     assert.equal(await levels(),'333333xx4444','bus to unknown boundary is draggable');
     await repeated('0101');const lockedBefore=await doc();
     const locked=await page.evaluate(()=>movableBoundary(state.tree[0],1));
-    assert.equal(locked.locked,true,'adjacent real transitions are recognized but cannot overlap');
-    await move(0,1,2);assert.equal(await doc(),lockedBefore,'locked edge never falls through to paint or overwrites neighbours');
+    assert.equal(locked.locked,false,'one-cycle pulses are recognized as draggable edges');
+    await move(0,1,1);assert.equal(await levels(),'00101','tight transitions move without deleting the pulse');
+    await page.evaluate(()=>doUndo());assert.equal(await doc(),lockedBefore,'undo restores the original one-cycle pulse');
     await load();await page.evaluate(()=>{state.tool={type:'glyph',char:'0'}});
     assert.equal(await page.evaluate(()=>boundaryAt({target:document.querySelector('.cell'),ctrlKey:false})),null,'paint tool does not activate edge dragging');
     assert.deepEqual(errors, [], 'no browser runtime errors');
