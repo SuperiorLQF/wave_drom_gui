@@ -796,6 +796,7 @@ html:not([data-mobile])[data-show-preview="0"][data-show-code="0"] #splitMain { 
 .cell.col-hl { background: var(--cell-hl); }
 .cell.painting { background: var(--cell-paint); }
 .cell.boundary-hover { cursor: ew-resize; box-shadow: inset 2px 0 var(--acc); }
+.cell.boundary-locked { cursor: not-allowed; }
 body.boundary-dragging, body.boundary-dragging * { cursor: ew-resize !important; user-select: none !important; }
 .cell.chain-sel { background: var(--cell-hl); box-shadow: inset 0 0 0 2px var(--acc); border-radius: 3px; }
 .grid-empty {
@@ -1694,6 +1695,7 @@ try { module.exports = WaveSkin; } catch(err) {}
 /* WaveDrom 可视化编辑器 —— 单文件应用逻辑 */
 /* ---------- 界面语言（顶栏地球按钮）：中文为基准，英文走词典；默认跟随系统 ---------- */
 const I18N_EN = {
+  '相邻边沿之间没有移动空间；按住 Alt 拖动可将后续波形一起后移': 'No room between adjacent transitions; hold Alt and drag to delay the following waveform.',
   '下一格是间隙标记，无法在保留间隙的同时恢复单格状态': 'The next cell is a gap marker; a single-cell change cannot preserve that gap and restore the state.',
   'Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形': 'Alt + wheel: edit one cell; Alt + drag a boundary: delay the rest of this signal',
   '路径形状': 'Path shape', '箭头方向': 'Arrow direction', '平滑曲线': 'Smooth curve',
@@ -6493,20 +6495,28 @@ function movableBoundary(lane, t, shiftTail = false) {
   const event = lane.slots[t];
   if (!event) return null;
   if (shiftTail && !['.', '|', '<', '>'].includes(event.glyph)) return { lane, t, min: t, max: Infinity, shiftTail: true };
-  const level = g => '0lL'.includes(g) ? 0 : '1hH'.includes(g) ? 1 : null;
+  const level = g => '0lLd'.includes(g) ? 0 : '1hHu'.includes(g) ? 1
+    : g === 'x' || g === 'X' ? 'unknown' : g === 'z' ? 'high-impedance' : isData(g) ? 'data' : null;
   let prev = t - 1;
   while (prev >= 0 && lane.slots[prev] && lane.slots[prev].glyph === '.') prev--;
   const left = lane.slots[prev];
   if (!left || !(isData(left.glyph) && isData(event.glyph) ||
     level(left.glyph) !== null && level(event.glyph) !== null && level(left.glyph) !== level(event.glyph))) return null;
-  const plain = i => {
+  const plain = (i, repeated) => {
     const s = lane.slots[i];
-    return s && s.glyph === '.' && Object.keys(s).every(k => k === 'glyph') && !lane.nodeByT[i];
+    return s && (s.glyph === '.' || (repeated === '0' || repeated === '1') && s.glyph === repeated) &&
+      Object.keys(s).every(k => k === 'glyph') && !lane.nodeByT[i];
   };
+  // Explicit 0000/1111 plateaus are visually identical to 0.../1....
+  // Use their actual transition boundaries, while retaining metadata barriers.
+  if (left.glyph === '0' || left.glyph === '1') {
+    while (prev > 0 && plain(prev, left.glyph) &&
+      ['.', left.glyph].includes(lane.slots[prev - 1]?.glyph)) prev--;
+  }
   let min = t, max = t;
-  while (min > prev + 1 && plain(min - 1)) min--;
-  while (max + 1 < lane.slots.length && plain(max + 1)) max++;
-  return min < max ? { lane, t, min, max } : null;
+  while (min > prev + 1 && plain(min - 1, left.glyph)) min--;
+  while (max + 1 < lane.slots.length && plain(max + 1, event.glyph)) max++;
+  return { lane, t, min, max, locked: min === max };
 }
 function boundaryAt(ev) {
   if (state.tool.type !== 'select' || autoChain || ev.ctrlKey || ev.metaKey || ev.shiftKey) return null;
@@ -6522,11 +6532,13 @@ function boundaryAt(ev) {
   const t = +cell.dataset.t;
   // Try both sides of the hovered cell; the shared edge belongs to the event
   // on the right. Limit the hit zone at small zoom so cell centres stay editable.
-  for (const k of [t, t + 1]) {
+  for (const k of [t, t + 1, t - 1]) {
     const pos = positions[k];
     if (!pos) continue;
     const glyph = lane.slots[k] && lane.slots[k].glyph;
-    const edgeX = pos.x + (glyph === '0' || glyph === '1' ? Math.min(CELLW * 0.15, pos.w * 0.25) : 0);
+    // laneSVG's 0/1 slope stays at 3–9 CSS px even when the cell shrinks.
+    // Hit its real midpoint, rather than scaling the hit region away from it.
+    const edgeX = pos.x + (glyph === '0' || glyph === '1' ? CELLW * 0.15 : 0);
     if (Math.min(Math.abs(x - pos.x), Math.abs(x - edgeX)) > Math.min(6, pos.w * 0.25)) continue;
     const hit = movableBoundary(lane, k, ev.altKey);
     if (hit) return hit;
@@ -6535,14 +6547,23 @@ function boundaryAt(ev) {
 }
 function bindBoundaryDrag(inner) {
   let drag = null, suppressClick = false, hovered = null;
-  const clearHover = () => { if (hovered) hovered.classList.remove('boundary-hover'); hovered = null; };
+  const clearHover = () => {
+    if (hovered) { hovered.classList.remove('boundary-hover', 'boundary-locked'); hovered.removeAttribute('title'); }
+    hovered = null;
+  };
   inner.addEventListener('mousemove', ev => {
     if (drag || ev.buttons) return;
     const hit = boundaryAt(ev);
     const cell = hit && inner.querySelector(`.cell[data-lane="${hit.lane.id}"][data-t="${hit.t}"]`);
-    if (cell === hovered) return;
+    if (cell === hovered && (!cell || cell.classList.contains('boundary-locked') === !!hit.locked)) return;
     clearHover();
-    if (cell) { hovered = cell; cell.classList.add('boundary-hover'); }
+    if (cell) {
+      hovered = cell; cell.classList.add('boundary-hover');
+      if (hit.locked) {
+        cell.classList.add('boundary-locked');
+        cell.title = i18n('相邻边沿之间没有移动空间；按住 Alt 拖动可将后续波形一起后移');
+      }
+    }
   });
   inner.addEventListener('mouseleave', clearHover);
   inner.addEventListener('mousedown', ev => {
@@ -6551,6 +6572,11 @@ function bindBoundaryDrag(inner) {
     const hit = boundaryAt(ev);
     if (!hit) return;
     ev.preventDefault(); ev.stopImmediatePropagation();
+    if (hit.locked) {
+      suppressClick = true;
+      toast(i18n('相邻边沿之间没有移动空间；按住 Alt 拖动可将后续波形一起后移'));
+      return;
+    }
     clearHover(); closePop(); hideColIns();
     clearTimeout(saveTimer); clearTimeout(previewTimer);
     painting = false; extendMode = false;
@@ -6575,7 +6601,9 @@ function bindBoundaryDrag(inner) {
         [+key >= drag.t ? +key + count : key, letter]));
     } else {
       const slots = drag.slots.slice();
-      slots[drag.t] = { glyph: '.' };
+      // Replace the swept interval, not just the original event: redundant
+      // explicit levels inside it must not leave a second transition behind.
+      for (let i = Math.min(t, drag.t); i <= Math.max(t, drag.t); i++) slots[i] = { glyph: '.' };
       slots[t] = drag.slots[drag.t];
       drag.lane.slots = slots;
       if (t !== drag.t && drag.nodes[drag.t]) {
