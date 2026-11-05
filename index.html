@@ -623,6 +623,8 @@ html:not([data-mobile])[data-show-preview="0"][data-show-code="0"] #splitMain { 
   border-left: 1px solid var(--wave-line);
 }
 .time-cell.tick { color: var(--wave-acc); font-weight: 600; }
+.axis-label { display: inline-block; flex: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.editor-zoom { flex: none; font: 600 11px var(--font-mono); }
 /* 列边界命中条：平时隐形，指针落上去才显一条 1px 竖线（真正的按钮在悬浮胶囊里）。
    z-index 高于 sticky 名称角格（6），免得被角格底色压住 */
 .col-ins {
@@ -790,6 +792,8 @@ html:not([data-mobile])[data-show-preview="0"][data-show-code="0"] #splitMain { 
 .cell:hover { background: var(--cell-hover); }
 .cell.col-hl { background: var(--cell-hl); }
 .cell.painting { background: var(--cell-paint); }
+.cell.boundary-hover { cursor: ew-resize; box-shadow: inset 2px 0 var(--acc); }
+body.boundary-dragging, body.boundary-dragging * { cursor: ew-resize !important; user-select: none !important; }
 .cell.chain-sel { background: var(--cell-hl); box-shadow: inset 0 0 0 2px var(--acc); border-radius: 3px; }
 .grid-empty {
   margin: 60px auto; max-width: 430px; text-align: center;
@@ -1456,6 +1460,7 @@ html[data-mobile] {
         <button class="btn ghost" data-act="add-col" data-n="4" data-i18n-title="网格增加 4 拍">＋4</button>
       </div>
       <button class="chain-pill" id="chainBtn" data-act="toggle-autochain" aria-pressed="false" title="自动连续模式：锁定一格连续给状态、逐格右移（中键点单元格可一步启动+选中）"><span class="chain-title"><span class="ct-full">自动</span><span class="ct-short">自动</span></span></button>
+      <button class="btn ghost editor-zoom" id="gridZoomReset" title="Ctrl＋滚轮缩放时间轴 · 点击恢复 100%" data-i18n-title="Ctrl＋滚轮缩放时间轴 · 点击恢复 100%" aria-label="重置编辑网格缩放" data-i18n-aria="重置编辑网格缩放">100%</button>
       <span class="hint" id="hintBox" tabindex="0" aria-label="操作说明" data-i18n-aria="操作说明"><span data-i18n="说明">说明</span><span class="hint-pop" role="tooltip" data-i18n="左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做">左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做</span></span>
     </div>
     <div class="grid-scroll" id="gridScroll"><div class="grid-inner" id="gridInner"></div></div>
@@ -1771,6 +1776,8 @@ const I18N_EN = {
   '网格拍数增减': 'Cycle count', '说明': 'Help',
   '左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做': 'Left-click to set a state; data-cell popup offers label, fill color and node placement · scroll on a selected cell to cycle states · pick a brush then click/drag to paint (drag right = hold) · right-click to erase · Ctrl+Z undo / Ctrl+Y redo',
   /* 右栏 */
+  'Ctrl＋滚轮缩放时间轴 · 点击恢复 100%': 'Ctrl + wheel: zoom the timeline · Click to reset to 100%',
+  '重置编辑网格缩放': 'Reset editor timeline zoom',
   '缩小': 'Zoom out', '放大': 'Zoom in', '重置缩放': 'Reset zoom', '收起': 'Collapse',
   /* 图表设置弹窗 */
   '标题区': 'Header', '标题文字': 'Title text', '刻度（0 起）': 'Ticks (from 0)', '刻度（倒标）': 'Ticks (reversed)',
@@ -2343,7 +2350,7 @@ function fitLabel(label, avail) {
   if (avail <= 0) return '';
   if (labelTextW(s) <= avail) return s;
   const chs = [...s];
-  if (chs.length <= 1) return s; // 单字符没有省略的余地
+  if (chs.length <= 1) return labelTextW('…') <= avail ? '…' : '';
   const last = chs[chs.length - 1];
   for (let n = chs.length - 1; n >= 1; n--) { // 递减前缀 + … + 末尾字符
     const cand = chs.slice(0, n).join('') + '…' + last;
@@ -2353,7 +2360,7 @@ function fitLabel(label, avail) {
     const cand = chs.slice(0, n).join('') + '…';
     if (labelTextW(cand) <= avail) return cand;
   }
-  return '…';
+  return labelTextW('…') <= avail ? '…' : '';
 }
 /* 被抬起的节点圆心 y：贴数据框上沿，完全避开标签行 */
 function liftedNodeY() { const mr = nodeMarkerR(); return Math.max(mr, LABEL_BAND[0] - mr - 1.5); }
@@ -2434,7 +2441,51 @@ WHEEL_CYCLES.seed = [...new Set(BRUSH_GROUPS.filter(g => g.name !== '间隙').fl
 WHEEL_CYCLES.nonclock = [...new Set([...WHEEL_CYCLES.signal, ...WHEEL_CYCLES.bus])];
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 let xclipSeq = 0;
-const gridCellW = () => CELLW * (state.hscale || 1);
+// View-only time zoom: never changes WaveJSON hscale, history or preview zoom.
+let gridZoom = 1;
+const gridCellW = () => CELLW * (state.hscale || 1) * gridZoom;
+
+function thinGridTicks() {
+  const inner = $('#gridInner');
+  for (const selector of ['.time-cells .time-cell', '.foot-nums .strip-num']) {
+    let right = -Infinity;
+    const labels = [...inner.querySelectorAll(selector)].map(cell => {
+      let label = cell.querySelector('.axis-label');
+      if (!label) {
+        label = h('span', { class: 'axis-label' }, cell.textContent);
+        cell.textContent = '';
+        cell.appendChild(label);
+      }
+      cell.title = label.textContent;
+      label.style.visibility = '';
+      return label;
+    });
+    // Measure before writing visibility to avoid a layout pass per tick.
+    const boxes = labels.map(label => label.getBoundingClientRect());
+    labels.forEach((label, i) => {
+      if (!label.textContent) return;
+      if (boxes[i].left < right + 8) label.style.visibility = 'hidden';
+      else right = boxes[i].right;
+    });
+  }
+}
+
+function setGridZoom(value, clientX) {
+  const next = Math.max(0.25, Math.min(3, value));
+  if (!Number.isFinite(next) || next === gridZoom) return;
+  const stage = $('#gridScroll');
+  const corner = $('#gridInner .time-corner');
+  const namew = corner ? corner.offsetWidth : 0;
+  const x = Math.max(namew, (clientX ?? stage.getBoundingClientRect().left + stage.clientWidth / 2) - stage.getBoundingClientRect().left);
+  const time = (stage.scrollLeft + x - namew) / gridCellW();
+  const top = stage.scrollTop;
+  closePop(); hideColIns(); hideLabelTip();
+  gridZoom = next;
+  renderGrid();
+  stage.scrollLeft = namew + time * gridCellW() - x;
+  stage.scrollTop = top;
+  $('#gridZoomReset').textContent = Math.round(gridZoom * 100) + '%';
+}
 
 /* ---------- 自动缩放：按最宽的总线标签自动挑水平缩放（1–8 整数，与手动档位同一套取值） ----------
    手动改 hscale 能加宽单元格让标签放得下，这里把它自动化：开关打开时每次文档变化都重算。
@@ -2537,7 +2588,7 @@ let lanePosCache = new WeakMap();
 function laneCharPositions(lane) {
   const hs = state.hscale || 1;
   const hit = lanePosCache.get(lane);
-  if (hit && hit.hs === hs) return hit.positions;
+  if (hit && hit.hs === hs && hit.zoom === gridZoom) return hit.positions;
   const base = gridCellW() * (lane.period || 1);
   const ph = lane.phase || 0;
   const positions = [];
@@ -2548,11 +2599,11 @@ function laneCharPositions(lane) {
     const ch = s ? s.glyph : '.';
     if (ch === '<') { positions.push(null); sub = true; continue; }
     if (ch === '>') { positions.push(null); sub = false; continue; }
-    const w = sub ? CELLW / 2 : base;
+    const w = sub ? CELLW * gridZoom / 2 : base;
     positions.push({ x, w });
     x += w;
   }
-  lanePosCache.set(lane, { hs, positions });
+  lanePosCache.set(lane, { hs, zoom: gridZoom, positions });
   return positions;
 }
 const chColors = () => [cssVar('--ch1'), cssVar('--ch2'), cssVar('--ch3'), cssVar('--ch4'), cssVar('--ch5'), cssVar('--ch6')];
@@ -4407,6 +4458,7 @@ function renderGrid() {
       h('div', { class: 'strip-text', style: `width:${colCount * gridCellW()}px` }, headFootRenderable(F.text))));
   }
   bindNameSplit(h('div', { class: 'name-split', title: i18n('拖动调整信号列宽 · 双击恢复自动') }), inner);
+  thinGridTicks();
   renderMiniEdges();
   if (autoChain && chainSel) restoreChainSelHighlight();
   if (colInsCol !== null) anchorColIns(); // 重建后胶囊跟着重新定位（列增减 / 滚动都会变）
@@ -6354,9 +6406,147 @@ function openLanePropPop(lane, anchor) {
   setTimeout(() => pInp.focus(), 30);
 }
 
+/* Boundary dragging moves one event through its adjacent continuation cells.
+   Keep the document length and neighbouring events intact; labels and the event's
+   node travel with it, while other nodes/metadata form hard stops. */
+function movableBoundary(lane, t) {
+  if (t <= 0 || lane.slots.some(s => s && (s.glyph === '<' || s.glyph === '>'))) return null;
+  const event = lane.slots[t];
+  if (!event) return null;
+  const level = g => '0lL'.includes(g) ? 0 : '1hH'.includes(g) ? 1 : null;
+  let prev = t - 1;
+  while (prev >= 0 && lane.slots[prev] && lane.slots[prev].glyph === '.') prev--;
+  const left = lane.slots[prev];
+  if (!left || !(isData(left.glyph) && isData(event.glyph) ||
+    level(left.glyph) !== null && level(event.glyph) !== null && level(left.glyph) !== level(event.glyph))) return null;
+  const plain = i => {
+    const s = lane.slots[i];
+    return s && s.glyph === '.' && Object.keys(s).every(k => k === 'glyph') && !lane.nodeByT[i];
+  };
+  let min = t, max = t;
+  while (min > prev + 1 && plain(min - 1)) min--;
+  while (max + 1 < lane.slots.length && plain(max + 1)) max++;
+  return min < max ? { lane, t, min, max } : null;
+}
+function boundaryAt(ev) {
+  if (state.tool.type !== 'select' || autoChain || ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return null;
+  const cell = ev.target.closest('.cell');
+  if (!cell) return null;
+  const lane = getLaneById(+cell.dataset.lane);
+  if (!lane) return null;
+  const positions = laneCharPositions(lane);
+  const r = cell.parentElement.getBoundingClientRect();
+  const x = ev.clientX - r.left + gridWindow().a * gridCellW();
+  const corner = $('#gridInner .time-corner');
+  if (corner && ev.clientX < corner.getBoundingClientRect().right) return null;
+  const t = +cell.dataset.t;
+  // Try both sides of the hovered cell; the shared edge belongs to the event
+  // on the right. Limit the hit zone at small zoom so cell centres stay editable.
+  for (const k of [t, t + 1]) {
+    const pos = positions[k];
+    if (!pos) continue;
+    const glyph = lane.slots[k] && lane.slots[k].glyph;
+    const edgeX = pos.x + (glyph === '0' || glyph === '1' ? Math.min(CELLW * 0.15, pos.w * 0.25) : 0);
+    if (Math.min(Math.abs(x - pos.x), Math.abs(x - edgeX)) > Math.min(6, pos.w * 0.25)) continue;
+    const hit = movableBoundary(lane, k);
+    if (hit) return hit;
+  }
+  return null;
+}
+function bindBoundaryDrag(inner) {
+  let drag = null, suppressClick = false, hovered = null;
+  const clearHover = () => { if (hovered) hovered.classList.remove('boundary-hover'); hovered = null; };
+  inner.addEventListener('mousemove', ev => {
+    if (drag || ev.buttons) return;
+    const hit = boundaryAt(ev);
+    const cell = hit && inner.querySelector(`.cell[data-lane="${hit.lane.id}"][data-t="${hit.t}"]`);
+    if (cell === hovered) return;
+    clearHover();
+    if (cell) { hovered = cell; cell.classList.add('boundary-hover'); }
+  });
+  inner.addEventListener('mouseleave', clearHover);
+  inner.addEventListener('mousedown', ev => {
+    suppressClick = false;
+    if (ev.button !== 0) return;
+    const hit = boundaryAt(ev);
+    if (!hit) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    clearHover(); closePop(); hideColIns();
+    clearTimeout(saveTimer); clearTimeout(previewTimer);
+    painting = false; extendMode = false;
+    drag = { ...hit, x: ev.clientX, current: hit.t, slots: hit.lane.slots.slice(),
+      nodes: { ...hit.lane.nodeByT }, step: gridCellW() * (hit.lane.period || 1), scroll: $('#gridScroll').scrollLeft };
+    document.body.classList.add('boundary-dragging');
+  }, true);
+  window.addEventListener('mousemove', ev => {
+    if (!drag) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    const offset = ev.clientX - drag.x + $('#gridScroll').scrollLeft - drag.scroll;
+    const t = Math.max(drag.min, Math.min(drag.max, drag.t + Math.round(offset / drag.step)));
+    if (t === drag.current) return;
+    const slots = drag.slots.slice();
+    slots[drag.t] = { glyph: '.' };
+    slots[t] = drag.slots[drag.t];
+    drag.lane.slots = slots;
+    drag.lane.nodeByT = { ...drag.nodes };
+    if (t !== drag.t && drag.nodes[drag.t]) {
+      delete drag.lane.nodeByT[drag.t];
+      drag.lane.nodeByT[t] = drag.nodes[drag.t];
+    }
+    drag.current = t;
+    paintedSinceDown = true;
+    lanePosCache = new WeakMap();
+    renderGrid(); renderCode(); renderPreview();
+  }, true);
+  const finish = cancel => {
+    if (!drag) return;
+    const finished = drag; drag = null;
+    document.body.classList.remove('boundary-dragging');
+    suppressClick = true; paintedSinceDown = true;
+    if (cancel || finished.current === finished.t) {
+      finished.lane.slots = finished.slots;
+      finished.lane.nodeByT = finished.nodes;
+      lanePosCache = new WeakMap();
+      renderGrid(); renderCode(); renderPreview();
+      persist();
+    } else {
+      lastCommitTag = null; commitTag = 'boundary';
+      update(true);
+    }
+  };
+  window.addEventListener('mouseup', ev => { if (ev.button === 0) finish(false); }, true);
+  window.addEventListener('blur', () => finish(true));
+  window.addEventListener('keydown', ev => {
+    if (!drag) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    if (ev.key === 'Escape') finish(true);
+  }, true);
+  inner.addEventListener('click', ev => {
+    if (!suppressClick) return;
+    ev.preventDefault(); ev.stopImmediatePropagation(); suppressClick = false;
+  }, true);
+  inner.addEventListener('wheel', ev => {
+    if (!drag) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+  }, { capture: true, passive: false });
+}
+
 /* 网格事件委托 */
 function bindGrid() {
   const inner = $('#gridInner');
+  bindBoundaryDrag(inner);
+  $('#gridZoomReset').addEventListener('click', () => setGridZoom(1));
+  $('#gridScroll').addEventListener('wheel', ev => {
+    if (document.body.classList.contains('boundary-dragging')) { ev.preventDefault(); return; }
+    // Capture before the existing cell-state wheel handler. Other modifiers and
+    // editable controls retain their native behavior; preview is untouched.
+    if (!ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
+    if (ev.target.closest('input, textarea, select, [contenteditable]')) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const delta = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? $('#gridScroll').clientHeight : 1);
+    if (delta) setGridZoom(gridZoom * Math.exp(-Math.max(-240, Math.min(240, delta)) * 0.002), ev.clientX);
+  }, { passive: false, capture: true });
   let downPos = null;
   /* 自动连续模式的 Esc 分级退出 + 方向键移动：捕获阶段优先处理，早于其它 Esc/方向键监听，
      且不受面板输入框焦点影响（面板里的数据标签输入框会抢焦点）。
@@ -6709,6 +6899,7 @@ function bindGrid() {
      ② 非自动模式悬停任意格（无需点选，不弹面板）；
      ③ 自动模式当前锁定格（chainSel，就地变换不右移；面板开着则跟随刷新）。 */
   inner.addEventListener('wheel', ev => {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey || ev.deltaY === 0) return;
     const cell = ev.target.closest('.cell');
     if (!cell) return;
     const cLane = +cell.dataset.lane, cT = +cell.dataset.t;
