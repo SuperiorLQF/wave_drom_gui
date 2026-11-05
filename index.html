@@ -188,6 +188,7 @@ svg { display: block; }
 .brand .name .bn-gui, .brand .name .bn-phone { color: var(--acc-text); font-weight: 600; }
 .brand .name .bn-phone { display: none; }
 .topbar .spacer { flex: 1; }
+.feature-guide { display: inline-flex; align-items: center; justify-content: center; flex: none; text-decoration: none; }
 
 /* ============ 按钮 ============ */
 .btn {
@@ -1375,6 +1376,7 @@ html[data-mobile] {
     <button class="ver-badge ver-link" id="verBadge" data-act="about-repo" aria-label="当前版本 dev，点击打开仓库首页" data-i18n-aria="当前版本 dev，点击打开仓库首页"><span data-app-version>dev</span><span class="ver-pop" role="tooltip" data-i18n="说不定有新版了，快点击去仓库首页看看吧！">说不定有新版了，快点击去仓库首页看看吧！</span></button>
   </div>
   <div class="spacer"></div>
+  <a class="icon-btn feature-guide" href="./features.html" target="_blank" rel="noopener" title="新增功能与操作指南" aria-label="新增功能与操作指南" data-i18n-title="新增功能与操作指南" data-i18n-aria="新增功能与操作指南"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2 2.5h4a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H2zM14 2.5h-4a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h4z"/></svg></a>
   <div class="menu-wrap" id="m-lang">
     <button class="icon-btn" aria-haspopup="true" data-i18n-title="界面语言">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c2.3 2.4 2.3 10 0 12.4-2.3-2.4-2.3-10 0-12.4M8 1.8v12.4"/></svg>
@@ -1464,6 +1466,7 @@ html[data-mobile] {
         <button class="btn ghost" data-act="add-col" data-n="4" data-i18n-title="网格增加 4 拍">＋4</button>
       </div>
       <button class="chain-pill" id="chainBtn" data-act="toggle-autochain" aria-pressed="false" title="自动连续模式：锁定一格连续给状态、逐格右移（中键点单元格可一步启动+选中）"><span class="chain-title"><span class="ct-full">自动</span><span class="ct-short">自动</span></span></button>
+      <span class="hint" title="右键将本格置为高阻态 z；Alt＋右键删除本拍并前移后续波形" data-i18n-title="右键将本格置为高阻态 z；Alt＋右键删除本拍并前移后续波形">⌫</span>
       <span class="hint" title="Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形" data-i18n-title="Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形">Alt</span>
       <button class="btn ghost editor-zoom" id="gridZoomReset" title="Ctrl＋滚轮缩放时间轴 · 点击恢复 100%" data-i18n-title="Ctrl＋滚轮缩放时间轴 · 点击恢复 100%" aria-label="重置编辑网格缩放" data-i18n-aria="重置编辑网格缩放">100%</button>
       <span class="hint" id="hintBox" tabindex="0" aria-label="操作说明" data-i18n-aria="操作说明"><span data-i18n="说明">说明</span><span class="hint-pop" role="tooltip" data-i18n="左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做">左键点选状态，数据格弹窗可设标签、填充色、放置节点 · 选中格滚轮切换状态 · 先选笔刷，点击落状态，向右拖动 = 延续 · 右键清除 · Ctrl+Z 撤销 / Ctrl+Y 重做</span></span>
@@ -1695,6 +1698,9 @@ try { module.exports = WaveSkin; } catch(err) {}
 /* WaveDrom 可视化编辑器 —— 单文件应用逻辑 */
 /* ---------- 界面语言（顶栏地球按钮）：中文为基准，英文走词典；默认跟随系统 ---------- */
 const I18N_EN = {
+  '新增功能与操作指南': 'New features and controls',
+  '右键将本格置为高阻态 z；Alt＋右键删除本拍并前移后续波形': 'Right-click: set this cell to high impedance z; Alt + right-click: delete the cycle and shift the rest left',
+  '将当前格置为高阻态 z，保留拍位': 'Set this cell to high impedance z without deleting the cycle',
   '相邻边沿之间没有移动空间；按住 Alt 拖动可将后续波形一起后移': 'No room between adjacent transitions; hold Alt and drag to delay the following waveform.',
   '下一格是间隙标记，无法在保留间隙的同时恢复单格状态': 'The next cell is a gap marker; a single-cell change cannot preserve that gap and restore the state.',
   'Alt＋滚轮仅改一格；Alt＋拖动边界后移该信号后续波形': 'Alt + wheel: edit one cell; Alt + drag a boundary: delay the rest of this signal',
@@ -1919,7 +1925,6 @@ const I18N_EN = {
   '拖动调整顺序（上/下沿 = 移到此处，组行中部 = 移入分组）': 'Drag to reorder (drop on an edge = insert there, drop on a group row = move into it)',
   '如：DDR 读时序': 'e.g. DDR read timing', '备注、说明': 'Notes…',
   '顶层必须是一个 JSON 对象': 'Top level must be a JSON object', '"signal" 必须是数组': '"signal" must be an array',
-  '使用鼠标右键点击对应单元格即可清除': 'Right-click a cell to erase it',
   '展开分组': 'Expand group', '折叠分组': 'Collapse group', '展开分组：': 'Expand group: ', '折叠分组：': 'Collapse group: ',
   '删除箭头': 'Delete arrow', '改动会自动同步到左侧网格': 'Edits sync to the grid automatically',
   '渲染库未加载': 'Renderer not loaded', '渲染 API 缺失': 'Render API missing', '渲染失败：': 'Render failed: ',
@@ -1929,7 +1934,8 @@ const I18N_EN = {
   '笔刷面板': 'Brush panel',
   '恢复横向弹窗条': 'Back to compact bar', '恢复右纵条': 'Back to right column',
   '笔刷（悬停或点击展示面板）': 'Brushes (hover or click to open)',
-  '延续第 ': 'Hold of cycle ', ' 拍 · ': ' · ', '非波形末尾的延续格无内容可清除': 'Hold cells before the waveform end have nothing to erase',
+  '延续第 ': 'Hold of cycle ', ' 拍 · ': ' · ',
+  '延续格保留拍位；Alt＋右键可删除这一拍，后续波形前移': 'Hold cells keep their timing; Alt + right-click deletes this cycle and shifts the rest left',
   '已清除第 ': 'Cleared cycle ', '该拍现延续第 ': 'now holds cycle ', ' 拍': '', '该拍变为延续': 'now a hold',
   '展开状态字符': 'Expand state glyphs', '折叠状态字符': 'Collapse state glyphs',
   '填充：': 'Fill: ', '自动·跟随通道': 'Auto · follow lane', '（官方填充）': ' (official fill)',
@@ -3796,7 +3802,7 @@ function cellTip(msg, lane, t) {
   cellTipTimer = setTimeout(() => tip.classList.remove('show'), 1800);
 }
 /* 清除笔刷的引导提示：左键清除与右键清除重复，该笔刷不再激活，只作引导 */
-const ERASE_HINT = '使用鼠标右键点击对应单元格即可清除'; // i18n() at use
+const ERASE_HINT = '右键将本格置为高阻态 z；Alt＋右键删除本拍并前移后续波形'; // i18n() at use
 /* 锚定到任意元素的提示气泡（复用 #cellTip 与其箭头样式），el 不在文档时退化为 toast */
 function brushTip(msg, el) {
   if (!el || !el.isConnected) { toast(msg); return; }
@@ -5714,17 +5720,17 @@ function effectiveSlotAt(lane, t) {
   }
   return { glyph: 'x' };
 }
-function paintCell(lane, t, glyph, { singleCell = false } = {}) {
+function paintCell(lane, t, glyph, { singleCell = false, schedule = true } = {}) {
   // A continuation has no state of its own. Materialize the original state at
   // the next cell before changing this one, so later cells remain untouched.
   const original = singleCell ? { ...effectiveSlotAt(lane, t) } : null;
-  if (singleCell && original.glyph === glyph) return;
-  if (singleCell && ['<', '>'].includes(lane.slots[t]?.glyph)) return;
+  if (singleCell && original.glyph === glyph) return false;
+  if (singleCell && ['<', '>'].includes(lane.slots[t]?.glyph)) return false;
   let restoreAt = t + 1;
   while (singleCell && ['<', '>'].includes(lane.slots[restoreAt]?.glyph)) restoreAt++;
   if (singleCell && lane.slots[restoreAt]?.glyph === '|') {
     toast(i18n('下一格是间隙标记，无法在保留间隙的同时恢复单格状态'), true);
-    return;
+    return false;
   }
   const restore = singleCell && restoreAt < laneLen(lane) &&
     (!lane.slots[restoreAt] || lane.slots[restoreAt].glyph === '.')
@@ -5756,7 +5762,8 @@ function paintCell(lane, t, glyph, { singleCell = false } = {}) {
   paintedSinceDown = true;
   /* 拖涂每跨一格都会进来：直接 update() 会每格全量重建网格 + 全文序列化，
      大文档拖动必掉帧。rAF 合帧后状态照常累改，一帧只渲染一次 */
-  scheduleUpdate();
+  if (schedule) scheduleUpdate();
+  return true;
 }
 /* 该格是否处于选中态（状态面板打开的格，或自动连续模式的锁定格）——决定标签暂存是否存活 */
 function isSelectedCell(laneId, t) {
@@ -5791,26 +5798,25 @@ function extendSource(lane, t) {
   }
   return -1;
 }
-function clearCell(lane, t) {
-  commitTag = 'paint';
-  const wave0 = laneWaveStr(lane), len0 = laneLen(lane), hadNode = !!lane.nodeByT[t];
-  const wasReal = !!(lane.slots[t] && lane.slots[t].glyph !== '.');
-  const nEdges = removeNodeMark(lane, t); // 清格连同节点标记：引用它的连线一并清理，不留悬空边占字母
-  if (lane.slots[t]) lane.slots[t] = null;
-  trimTrailingNulls(lane);
-  lane.len = null;
-  if (nEdges) update(true); else update(); // 清理了连线才需要重建箭头列表/叠加层
-  if (nEdges) toast(i18n('已移除节点（连带 ') + nEdges + i18n(' 条连线）'));
-  if (t >= len0 || hadNode) return; // 通道外空区或删了节点标记：不提示
-  if (laneWaveStr(lane) === wave0 && laneLen(lane) === len0) {
-    // 点了延续格且无任何可见变化
-    const src = extendSource(lane, t);
-    cellTip((src >= 0 ? i18n('延续第 ') + src + i18n(' 拍 · ') : '') + i18n('非波形末尾的延续格无内容可清除'), lane, t);
-  } else if (wasReal && laneLen(lane) === len0) {
-    // 删的是真实字符且它不是最后一拍：该格变成延续格，前一个状态顺延流过来
-    const src = extendSource(lane, t);
-    cellTip(i18n('已清除第 ') + t + i18n(' 拍') + ' · ' + (src >= 0 ? i18n('该拍现延续第 ') + src + i18n(' 拍') : i18n('该拍变为延续')), lane, t);
+function clearCell(lane, t, { trimEnd = false } = {}) {
+  if (!(t >= 0) || t >= laneLen(lane)) return;
+  if (trimEnd) {
+    // The toolbar's trailing-column minus button really shortens the waveform.
+    // Keep that operation separate from erasing a cell to high impedance.
+    const edges = removeNodeMark(lane, t);
+    if (lane.slots[t]) lane.slots[t] = null;
+    trimTrailingNulls(lane); lane.len = null;
+    commitTag = 'paint'; update(!!edges);
+    return;
   }
+  const alreadyZ = effectiveSlotAt(lane, t).glyph === 'z';
+  const changed = paintCell(lane, t, 'z', { singleCell: true, schedule: false });
+  if (!changed && !alreadyZ) return; // Preserve unsupported gap/subcycle markers.
+  const edges = removeNodeMark(lane, t);
+  closePop(); dropLabelStash();
+  commitTag = 'erase-to-z';
+  update(true);
+  if (edges) toast(i18n('已移除节点（连带 ') + edges + i18n(' 条连线）'));
 }
 /* ---------- 拍级插入 / 删除 ----------
    一拍 = 时间轴上的一个单位；period=1、phase=0 时一拍就是一格（绝大多数文档如此）。
@@ -5937,6 +5943,16 @@ function doInsertLaneCycle(lane, k) {
 function doRemoveLaneCycle(lane, k) {
   const edges = removeLaneCycle(lane, k);
   if (edges < 0) { toast(i18n('这里没有可删除的内容')); return; }
+  if (chainSel && chainSel.laneId === lane.id) {
+    if (chainSel.t > k) chainSel.t--;
+    if (laneLen(lane)) chainSel.t = Math.min(chainSel.t, laneLen(lane) - 1);
+    else { chainSel = null; clearChainHighlight(); clearEditingRow(); }
+  }
+  if (labelStash && labelStash.laneId === lane.id) {
+    if (labelStash.t === k) labelStash = null;
+    else if (labelStash.t > k) labelStash.t--;
+  }
+  commitTag = null; // Each explicit cycle deletion is independently undoable.
   update(true);
   toast(fmtT(edges
     ? '已删除第 {n} 拍 · 通道「{lane}」（连带清理 {e} 条连线，Ctrl+Z 可撤销）'
@@ -6341,9 +6357,9 @@ function openPop(lane, t, anchor) {
   nodeRow.appendChild(linkBtn);
   pop.appendChild(nodeRow);
 
-  const clearBtn = h('button', { class: 'btn danger cap neutral' }, i18n('清除本格'));
+  const clearBtn = h('button', { class: 'btn danger cap neutral', title: i18n('将当前格置为高阻态 z，保留拍位') }, i18n('清除本格'));
   clearBtn.addEventListener('click', () => { clearCell(lane, t); closePop(); });
-  /* 本通道的拍级增删：与「清除本格」（置空、保留拍位）不同，这里是真正插/删一拍，后面的内容跟着挪。
+  /* 本通道的拍级增删：与「清除本格」（置为高阻态 z、保留拍位）不同，这里是真正插/删一拍，后面的内容跟着挪。
      胶囊配色与表头浮出的整列加减一致：绿=插入、红=删除 */
   const insLane = h('button', { class: 'btn cap add', title: i18n('在本格前插入一拍（只动本通道）') },
     h('span', { class: 'sym' }, '+'), i18n('前插一拍'));
@@ -6882,7 +6898,11 @@ function bindGrid() {
     if (!cell) return;
     ev.preventDefault();
     const lane = getLaneById(+cell.dataset.lane);
-    if (lane) clearCell(lane, +cell.dataset.t);
+    if (!lane) return;
+    if (ev.altKey) {
+      closePop();
+      doRemoveLaneCycle(lane, +cell.dataset.t);
+    } else clearCell(lane, +cell.dataset.t);
   });
   /* 表头缝隙（桌面 hover）：悬停 → 该列上方弹出胶囊（整列插入 / 删除） */
   inner.addEventListener('mouseover', ev => {
@@ -9048,7 +9068,7 @@ function handleAct(act, btn) {
             let deleted = false;
             eachLane(l => {
               const t = cycleSlotOf(l, content - 1); // 覆盖目标列的拍（与插入/删除一拍同一套换算）
-              if (t >= 0 && t < laneLen(l)) { clearCell(l, t); deleted = true; }
+              if (t >= 0 && t < laneLen(l)) { clearCell(l, t, { trimEnd: true }); deleted = true; }
             });
             if (!deleted) break;
             removed++;

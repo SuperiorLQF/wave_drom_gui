@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="WaveDrom-Gui 新增功能指南：时间轴缩放、边界拖动、Alt 精细编辑、高阻态清除、删拍与连线样式。">
+<title>新增功能与操作指南 · WaveDrom-Gui</title>
+<style>
+:root{color-scheme:light;--ink:#233447;--muted:#596c7d;--accent:#087d70;--line:#dce5e9;--paper:#fff;--bg:#f5f8f9}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:90px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.8 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:4px}a:hover{color:#045d54}a:focus-visible{outline:3px solid #63b8ad;outline-offset:4px;border-radius:4px}header{position:sticky;top:0;z-index:2;background:#ffffffed;border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}header div{max-width:1100px;margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}header a{text-decoration:none;font-size:14px;font-weight:650}.brand{color:var(--ink)}main{max-width:1100px;margin:auto;padding:48px 24px 70px}.eyebrow{color:var(--accent);font-size:13px;font-weight:700;letter-spacing:.08em}h1{font-size:clamp(28px,5vw,44px);line-height:1.25;letter-spacing:-.04em;margin:12px 0 16px}h2{font-size:23px;line-height:1.5;margin:0 0 16px}h3{font-size:17px;margin:22px 0 8px}p{margin:10px 0}.intro{max-width:700px;color:var(--muted)}.button{display:inline-block;background:var(--accent);color:white;padding:9px 18px;border-radius:9px;text-decoration:none;font-weight:650;margin-top:12px}.button:hover{background:#05665b;color:white}.toc{display:flex;flex-wrap:wrap;gap:8px;margin:32px 0}.toc a{border:1px solid var(--line);background:var(--paper);border-radius:100px;padding:5px 14px;text-decoration:none;font-size:14px}section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;margin-top:20px}.number{font:600 13px ui-monospace,monospace;color:var(--accent);margin-bottom:8px}.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--line);border-radius:9px}table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}th{background:#f0f6f5;color:#335852;font-weight:650}td,th{padding:12px 15px;vertical-align:top;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}kbd,code{font: .9em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}kbd{display:inline-block;background:#f2f5f7;border:1px solid #d7e0e5;border-bottom-width:2px;border-radius:5px;padding:1px 6px;white-space:nowrap}code{color:#37616b;background:#eef5f6;padding:2px 5px;border-radius:4px}pre{background:#f1f6f7;padding:16px;border-radius:9px;overflow-x:auto;line-height:1.7}pre code{padding:0;background:none}.note{border-left:3px solid #76aaa1;background:#f0f7f5;padding:10px 15px;color:#41665d;font-size:14px;margin-top:18px}.examples{display:grid;grid-template-columns:1fr 1fr;gap:14px}.example{padding:15px;background:#f5f8fb;border-radius:10px;min-width:0}.example strong{font-size:14px}.example p{font-size:14px;color:var(--muted)}.example code{overflow-wrap:anywhere}.diagram{display:block;width:100%;max-width:540px;height:auto;margin:16px 0}ul,ol{padding-left:22px}li{margin:6px 0}.muted,footer{color:var(--muted);font-size:14px}footer{padding:26px 0 0}footer a{margin-right:18px}@media(max-width:600px){main{padding:28px 16px 45px}header div{padding:12px 16px}section{padding:20px 17px;border-radius:12px}.examples{grid-template-columns:1fr}td,th{padding:10px}h2{font-size:21px}.toc{gap:6px}.toc a{font-size:13px;padding:4px 10px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header><div><a class="brand" href="./">∿ WaveDrom-Gui</a><a href="./">返回编辑器 →</a></div></header>
+<main>
+<div class="eyebrow">编辑器增强 · 使用指南</div>
+<h1>新增功能，怎么用。</h1>
+<p class="intro">这里集中说明本项目新增的时间轴缩放、边沿拖动、单格微调、清除与删拍，以及连线选择方式。操作主要作用于中间的编辑网格。</p>
+<a class="button" href="./">打开编辑器</a>
+<nav class="toc" aria-label="本页目录"><a href="#shortcuts">快捷操作</a><a href="#zoom">缩放</a><a href="#drag">边界拖动</a><a href="#wheel">单格微调</a><a href="#erase">清除与删拍</a><a href="#edges">连线样式</a><a href="#notes">注意事项</a></nav>
+<section id="shortcuts"><div class="number">QUICK REFERENCE</div><h2>快捷操作速查</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">操作</th><th scope="col">效果</th></tr></thead><tbody>
+<tr><td><kbd>Ctrl</kbd> ＋ 滚轮</td><td>缩放编辑网格时间轴，范围 25%～300%。</td></tr>
+<tr><td>点击编辑工具栏的百分比</td><td>恢复 100%。右侧预览的百分比独立控制预览。</td></tr>
+<tr><td>选择工具下拖动边界</td><td>调整一处边界；密集边界发生碰撞时，只推动必要的相邻内容。</td></tr>
+<tr><td><kbd>Alt</kbd> ＋ 向右拖动边界</td><td>该边界及本信号后续波形一起后移。</td></tr>
+<tr><td>普通滚轮</td><td>修改当前状态；后面的延续格会跟随这个状态。</td></tr>
+<tr><td><kbd>Alt</kbd> ＋ 滚轮</td><td>仅修改当前格，下一格恢复原状态。</td></tr>
+<tr><td>右键／“清除本格”</td><td>把当前格设为高阻态 <code>z</code>，保留拍位，下一格恢复原状态。</td></tr>
+<tr><td><kbd>Alt</kbd> ＋ 右键</td><td>删除当前拍，本信号后续内容与节点前移一拍。</td></tr>
+<tr><td><kbd>Esc</kbd>／<kbd>Ctrl</kbd> ＋ <kbd>Z</kbd></td><td>拖动期间取消／完成后撤销；一次边界拖动可一次撤销。</td></tr>
+</tbody></table></div></section>
+<section id="zoom"><div class="number">01 / VIEW</div><h2>以鼠标位置为中心缩放时间轴</h2>
+<p>鼠标放在编辑网格内，按住 <kbd>Ctrl</kbd> 滚动滚轮。放大时看清局部，缩小时查看整段时序；鼠标对应的时间点尽量保持原位。</p>
+<ul><li>缩放范围为 <strong>25%～300%</strong>，点击网格工具栏的百分比恢复 100%。</li><li>行高和文字字号保持可读；上下刻度自动减少显示，避免数字重叠。空间不足的数据标签会省略显示，适用时可悬停查看全文。</li><li>只改变编辑网格的时间轴显示，不修改 WaveJSON 的 <code>hscale</code>，也不改变右侧实时预览的缩放。</li></ul>
+</section>
+<section id="drag"><div class="number">02 / TIMING</div><h2>拖动边界，调整时序</h2>
+<p>先选中<strong>“选择”工具</strong>并关闭自动连续模式。鼠标靠近电平翻转或总线分段边界，出现左右拖动光标后，按住左键拖动。移动按本信号的整拍吸附。</p>
+<svg class="diagram" viewBox="0 0 540 116" role="img" aria-label="移动上升沿：由第四拍移动到第六拍，前后电平保持一致"><rect width="540" height="116" rx="10" fill="#f3f7f8"/><g stroke="#dce5e9" stroke-dasharray="3 4"><path d="M140 12V104M200 12V104M260 12V104M320 12V104M380 12V104M440 12V104"/></g><g fill="#596c7d" font-family="system-ui,sans-serif" font-size="13"><text x="18" y="42">拖动前</text><text x="18" y="91">拖动后</text></g><g fill="none" stroke="#087d70" stroke-width="2.5" stroke-linejoin="round"><path d="M100 49H260V24H510"/><path d="M100 99H380V74H510"/></g><path d="M276 59H363m-8-5 8 5-8 5" fill="none" stroke="#9584ad" stroke-width="2"/></svg>
+<div class="examples"><div class="example"><strong>普通拖动：调整局部</strong><p>移动当前边界。连续单拍总线或紧邻的单拍翻转没有空隙时，顺延发生碰撞的相邻内容，保留数据顺序、标签和节点；遇到空闲位置即停止推动。</p></div><div class="example"><strong>Alt＋拖动：后续一起延迟</strong><p>按下鼠标时按住 Alt，再向右拖动。后续所有内容一起移动，彼此间距保持不变；其他信号不动。拖回起点恢复原位置，不会向左覆盖此前内容。</p></div></div>
+<p>支持 <code>0...1...</code>、<code>00001111</code> 等表示方式，也识别电平、未知态、高阻态与总线之间的相应边界。鼠标、触摸和触控笔共用边界拖动逻辑。</p>
+<div class="note">真实节点、间隙或其他标记仍会受到保护。若出现禁止光标，请查看边界提示。<code>p/n</code> 自动生成的时钟内部半拍边沿，暂不支持单独拖动。</div>
+</section>
+<section id="wheel"><div class="number">03 / PRECISION</div><h2>Alt＋滚轮，只改当前一格</h2>
+<p>普通滚轮改变状态后，后面的 <code>.</code> 会继续继承它。按住 <kbd>Alt</kbd> 再滚动，会在下一格补回原状态，避免微调传播到整段。</p>
+<div class="examples"><div class="example"><strong>普通滚轮：影响后续延续</strong><p>例如把中间一格从低电平上滚成高电平：</p><code>0.... → 0.1..</code><p>对应逐拍电平：00000 → 00111。</p></div><div class="example"><strong>Alt＋滚轮：插入单拍变化</strong><p>同样修改中间一格，下一格恢复低电平：</p><code>0.... → 0.10.</code><p>对应逐拍电平：00000 → 00100。</p></div></div>
+<p>总线标签会在恢复原状态时保留。自动连续模式下，滚轮仍只作用于当前锁定格，不会自动推进。</p>
+</section>
+<section id="erase"><div class="number">04 / ERASE OR DELETE</div><h2>清除与删拍，是两种操作</h2>
+<p>WaveDrom 没有通用的“中间空白一拍”字符。这里将<strong>清除内容明确设为高阻态 <code>z</code></strong>，不再把它当作“变成延续格”。</p>
+<div class="examples"><div class="example"><strong>右键：当前格变为高阻态</strong><p>清除第 2 格（从 0 起），总长度不变，下一格恢复原低电平。</p><pre><code>原来：0...1...
+之后：0.z01...</code></pre></div><div class="example"><strong>Alt＋右键：删除这一拍</strong><p>同样操作第 2 格，删除一个延续格，后面的上升沿提前一拍。</p><pre><code>原来：0...1...
+之后：0..1...</code></pre></div></div>
+<ul><li>“清除本格”按钮和清除工具也采用高阻态语义。</li><li>Alt＋右键只缩短当前信号，其他信号与全局刻度不变。</li><li>删除或清除当前节点时，会清理引用该节点的连线；后续仍存在的节点及其连线关系会保留。</li><li>清除末尾格仍保留长度；工具栏的末尾减拍按钮则真正缩短波形。</li></ul>
+</section>
+<section id="edges"><div class="number">05 / CONNECTIONS</div><h2>连线按“形状＋方向”选择</h2>
+<p>不必从一长串符号中辨认样式。现在分别选择<strong>路径形状</strong>和<strong>箭头方向</strong>，旁边实时显示实际路径预览；全局连线面板和节点连线弹窗使用同一套控件。</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">路径</th><th scope="col">可用方向</th></tr></thead><tbody>
+<tr><td>直线、平滑曲线、直转曲</td><td>无箭头／终点箭头／双向箭头</td></tr><tr><td>曲转直</td><td>无箭头／终点箭头</td></tr><tr><td>先横后竖、横→竖→横</td><td>无箭头／终点箭头／双向箭头</td></tr><tr><td>先竖后横</td><td>无箭头／终点箭头</td></tr><tr><td>范围标记</td><td>两端短杠</td></tr>
+</tbody></table></div>
+<p>覆盖内置 WaveDrom 原生支持的 <strong>20 种组合</strong>，不支持的方向会禁用。切换形状时尽量保留原方向，不支持时使用可用方向。保存仍是标准 <code>edge</code> 语法。</p>
+</section>
+<section id="notes"><div class="number">BEFORE YOU START</div><h2>几个容易混淆的地方</h2>
+<ul><li><code>.</code> 延续上一状态；<code>x</code> 是未知态；<code>z</code> 是高阻态；<code>|</code> 是间隙标记，它们都不是通用空白格。</li><li>单格修改或清除时，如果下一格是间隙标记 <code>|</code>，会提示并保护原内容，避免为了恢复状态而丢失间隙。零宽子周期标记也受到保护。</li><li>普通拖动和 Alt＋拖动只在选择工具、非自动连续模式下启动，笔刷涂抹保留原来的行为。</li><li>拖动期间按 <kbd>Esc</kbd> 取消；完成后用 <kbd>Ctrl</kbd>＋<kbd>Z</kbd> 撤销，<kbd>Ctrl</kbd>＋<kbd>Y</kbd> 重做。Mac 可使用对应的 Command 撤销快捷键。</li></ul>
+</section>
+<footer><a href="./">返回编辑器</a><a href="https://github.com/SuperiorLQF/wave_drom_gui">GitHub 仓库</a><p>本页整理本项目新增的编辑功能。原项目的完整功能介绍见仓库 README 和 EDITOR.md。</p></footer>
+</main>
+</body>
+</html>
