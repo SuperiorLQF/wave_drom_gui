@@ -3,21 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="WaveDrom-Gui 新增功能指南：时间轴缩放、边界拖动、Alt 精细编辑、高阻态清除、删拍与连线样式。">
-<title>新增功能与操作指南 · WaveDrom-Gui</title>
+<meta name="description" content="WaveDrom-Gui 操作手册，包含真实录制 GIF、分步操作、快捷键、毛刺笔刷、边界拖动及常见问题。">
+<title>操作手册 · WaveDrom-Gui</title>
 <style>
 :root{color-scheme:light;--ink:#233447;--muted:#596c7d;--accent:#087d70;--line:#dce5e9;--paper:#fff;--bg:#f5f8f9}
 *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:90px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.8 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}a{color:var(--accent);text-underline-offset:4px}a:hover{color:#045d54}a:focus-visible{outline:3px solid #63b8ad;outline-offset:4px;border-radius:4px}header{position:sticky;top:0;z-index:2;background:#ffffffed;border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}header div{max-width:1100px;margin:auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}header a{text-decoration:none;font-size:14px;font-weight:650}.brand{color:var(--ink)}main{max-width:1100px;margin:auto;padding:48px 24px 70px}.eyebrow{color:var(--accent);font-size:13px;font-weight:700;letter-spacing:.08em}h1{font-size:clamp(28px,5vw,44px);line-height:1.25;letter-spacing:-.04em;margin:12px 0 16px}h2{font-size:23px;line-height:1.5;margin:0 0 16px}h3{font-size:17px;margin:22px 0 8px}p{margin:10px 0}.intro{max-width:700px;color:var(--muted)}.button{display:inline-block;background:var(--accent);color:white;padding:9px 18px;border-radius:9px;text-decoration:none;font-weight:650;margin-top:12px}.button:hover{background:#05665b;color:white}.toc{display:flex;flex-wrap:wrap;gap:8px;margin:32px 0}.toc a{border:1px solid var(--line);background:var(--paper);border-radius:100px;padding:5px 14px;text-decoration:none;font-size:14px}section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:28px;margin-top:20px}.number{font:600 13px ui-monospace,monospace;color:var(--accent);margin-bottom:8px}.table-wrap{overflow-x:auto;margin:18px 0;border:1px solid var(--line);border-radius:9px}table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}th{background:#f0f6f5;color:#335852;font-weight:650}td,th{padding:12px 15px;vertical-align:top;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}kbd,code{font: .9em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}kbd{display:inline-block;background:#f2f5f7;border:1px solid #d7e0e5;border-bottom-width:2px;border-radius:5px;padding:1px 6px;white-space:nowrap}code{color:#37616b;background:#eef5f6;padding:2px 5px;border-radius:4px}pre{background:#f1f6f7;padding:16px;border-radius:9px;overflow-x:auto;line-height:1.7}pre code{padding:0;background:none}.note{border-left:3px solid #76aaa1;background:#f0f7f5;padding:10px 15px;color:#41665d;font-size:14px;margin-top:18px}.examples{display:grid;grid-template-columns:1fr 1fr;gap:14px}.example{padding:15px;background:#f5f8fb;border-radius:10px;min-width:0}.example strong{font-size:14px}.example p{font-size:14px;color:var(--muted)}.example code{overflow-wrap:anywhere}.diagram{display:block;width:100%;max-width:540px;height:auto;margin:16px 0}ul,ol{padding-left:22px}li{margin:6px 0}.muted,footer{color:var(--muted);font-size:14px}footer{padding:26px 0 0}footer a{margin-right:18px}@media(max-width:600px){main{padding:28px 16px 45px}header div{padding:12px 16px}section{padding:20px 17px;border-radius:12px}.examples{grid-template-columns:1fr}td,th{padding:10px}h2{font-size:21px}.toc{gap:6px}.toc a{font-size:13px;padding:4px 10px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+.demo{margin:24px 0 8px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#f7fafb}.demo-frame{background:#eaf0f3}.demo-image{display:block;width:100%;height:auto}.demo figcaption{padding:14px 16px}.demo figcaption p{margin:4px 0 12px;color:var(--muted);font-size:14px}.demo-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.demo-toggle,.copy-example{border:0;background:var(--accent);color:#fff;border-radius:7px;padding:8px 14px;font:600 14px system-ui;cursor:pointer}.demo-toggle:hover,.copy-example:hover{background:#05665b}.demo-toggle:focus-visible,.copy-example:focus-visible{outline:3px solid #63b8ad;outline-offset:3px}.demo-toggle[aria-pressed="true"]{background:#354e60}.demo-controls a{font-size:13px}.demo-status{font-size:12px;color:var(--muted)}.steps{counter-reset:step;list-style:none;padding:0}.steps>li{position:relative;padding:8px 0 10px 40px}.steps>li:before{counter-increment:step;content:counter(step);position:absolute;left:0;top:9px;display:grid;place-items:center;width:26px;height:26px;background:#e7f2ef;color:var(--accent);border-radius:50%;font-weight:700;font-size:13px}details{border-top:1px solid var(--line);padding:15px 0}details:last-child{padding-bottom:0}summary{cursor:pointer;font-weight:600}summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.recipe{border-left:3px solid #c6a36b;padding:8px 14px;margin:18px 0;background:#fbf7ef;font-size:14px}.return-top{display:inline-block;margin-top:12px;font-size:13px}.demo-frame a{display:block}
 </style>
 </head>
 <body>
 <header><div><a class="brand" href="./">∿ WaveDrom-Gui</a><a href="./">返回编辑器 →</a></div></header>
 <main>
-<div class="eyebrow">编辑器增强 · 使用指南</div>
-<h1>新增功能，怎么用。</h1>
-<p class="intro">这里集中说明本项目新增的时间轴缩放、边沿拖动、单格微调、清除与删拍，以及连线选择方式。操作主要作用于中间的编辑网格。</p>
-<a class="button" href="./">打开编辑器</a>
-<nav class="toc" aria-label="本页目录"><a href="#shortcuts">快捷操作</a><a href="#zoom">缩放</a><a href="#drag">边界拖动</a><a href="#wheel">单格微调</a><a href="#pulse">毛刺笔刷</a><a href="#erase">清除与删拍</a><a href="#edges">连线样式</a><a href="#notes">注意事项</a></nav>
+<div class="eyebrow">HANDBOOK · 带演示的操作手册</div>
+<h1>从画出第一条波形，<br>到精确调整每一拍。</h1>
+<p class="intro">按任务查找操作步骤，配合 8 组真实浏览器录制的 GIF。先看结果，再照着操作；每组演示都显示鼠标位置、修饰键和当前步骤。</p>
+<a class="button" href="./">打开编辑器</a><p class="muted">动图默认不自动播放。点击“播放 GIF”观看，点击“停止播放”回到封面；也可单独打开原尺寸动图。</p>
+<nav class="toc" aria-label="本页目录"><a href="#start">快速上手</a><a href="#shortcuts">快捷操作</a><a href="#zoom">缩放</a><a href="#drag">边界拖动</a><a href="#wheel">单格微调</a><a href="#pulse">毛刺笔刷</a><a href="#erase">清除与删拍</a><a href="#edges">连线样式</a><a href="#save">保存与导出</a><a href="#faq">常见问题</a><a href="#notes">注意事项</a></nav>
+<section id="start"><div class="number">START HERE</div><h2>三步开始编辑</h2>
+<ol class="steps"><li><strong>打开一个图表。</strong>通过“导入 → 粘贴 WaveJSON”粘贴已有时序，或选择“导入示例”。首次尝试可复制下方的练习数据。</li><li><strong>选工具，再操作。</strong>用 0／1 等笔刷落状态，向右拖动延续；调整边界前改选“选择”并关闭自动连续模式。毛刺笔刷只用于同电平尖刺切换。</li><li><strong>保存可编辑原稿。</strong>完成后下载 JSON；需要图片时再导出 SVG 或 PNG。重要编辑可随时 Ctrl＋Z 撤销。</li></ol>
+<details><summary>展开练习用 WaveJSON</summary><pre><code id="practice-json">{
+  "signal": [
+    { "name": "CLK", "wave": "p..............." },
+    { "name": "VALID", "wave": "0...1...0......." },
+    { "name": "DATA", "wave": "x...222=x.......", "data": ["DAT0", "DAT1", "DAT2", "DAT3"] },
+    { "name": "READY", "wave": "0.....1...0....." }
+  ],
+  "head": { "tick": 0 }
+}</code></pre><button class="copy-example" type="button">复制练习 JSON</button><span id="copy-status" class="demo-status" aria-live="polite"></span></details>
+<h3>最常用的绘制方式</h3><p>选择 1 笔刷，在目标格按下并向右拖，后续格写成延续符；再选择 0 笔刷，点出有效区间的结束位置。普通滚轮也能上下调整状态。</p>
+<figure class="demo" data-demo="draw"><div class="demo-frame"><a href="./images/handbook/draw.gif" target="_blank" rel="noopener" aria-label="单独查看：基础绘制：高电平区间与延续"><img class="demo-image" src="./images/handbook/draw.png" data-poster="./images/handbook/draw.png" data-animation="./images/handbook/draw.gif" width="900" height="579" loading="lazy" decoding="async" alt="选择 1，从第 4 格拖到第 7 格；再在第 8 格落下 0，完成有效区间。"></a></div><figcaption><strong>基础绘制：高电平区间与延续</strong><p>选择 1，从第 4 格拖到第 7 格；再在第 8 格落下 0，完成有效区间。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/draw.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
 <section id="shortcuts"><div class="number">QUICK REFERENCE</div><h2>快捷操作速查</h2>
 <div class="table-wrap"><table><thead><tr><th scope="col">操作</th><th scope="col">效果</th></tr></thead><tbody>
 <tr><td><kbd>Ctrl</kbd> ＋ 滚轮</td><td>缩放编辑网格时间轴，范围 25%～300%。</td></tr>
@@ -33,44 +48,79 @@
 <section id="zoom"><div class="number">01 / VIEW</div><h2>以鼠标位置为中心缩放时间轴</h2>
 <p>鼠标放在编辑网格内，按住 <kbd>Ctrl</kbd> 滚动滚轮。放大时看清局部，缩小时查看整段时序；鼠标对应的时间点尽量保持原位。</p>
 <ul><li>缩放范围为 <strong>25%～300%</strong>，点击网格工具栏的百分比恢复 100%。</li><li>行高和文字字号保持可读；上下刻度自动减少显示，避免数字重叠。空间不足的数据标签会省略显示，适用时可悬停查看全文。</li><li>只改变编辑网格的时间轴显示，不修改 WaveJSON 的 <code>hscale</code>，也不改变右侧实时预览的缩放。</li></ul>
-</section>
+<h3>照着做</h3><ol class="steps"><li>鼠标放在编辑网格的目标时间附近。</li><li>按住 Ctrl 上滚放大、下滚缩小。</li><li>点击编辑工具栏的百分比回到 100%。</li></ol><figure class="demo" data-demo="zoom"><div class="demo-frame"><a href="./images/handbook/zoom.gif" target="_blank" rel="noopener" aria-label="单独查看：缩放：Ctrl＋滚轮与一键复位"><img class="demo-image" src="./images/handbook/zoom.png" data-poster="./images/handbook/zoom.png" data-animation="./images/handbook/zoom.gif" width="900" height="579" loading="lazy" decoding="async" alt="围绕鼠标时间位置放大、缩小，再点击百分比恢复 100%。"></a></div><figcaption><strong>缩放：Ctrl＋滚轮与一键复位</strong><p>围绕鼠标时间位置放大、缩小，再点击百分比恢复 100%。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/zoom.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
 <section id="drag"><div class="number">02 / TIMING</div><h2>拖动边界，调整时序</h2>
 <p>先选中<strong>“选择”工具</strong>并关闭自动连续模式。鼠标靠近电平翻转或总线分段边界，出现左右拖动光标后，按住左键拖动。移动按本信号的整拍吸附。</p>
 <svg class="diagram" viewBox="0 0 540 116" role="img" aria-label="移动上升沿：由第四拍移动到第六拍，前后电平保持一致"><rect width="540" height="116" rx="10" fill="#f3f7f8"/><g stroke="#dce5e9" stroke-dasharray="3 4"><path d="M140 12V104M200 12V104M260 12V104M320 12V104M380 12V104M440 12V104"/></g><g fill="#596c7d" font-family="system-ui,sans-serif" font-size="13"><text x="18" y="42">拖动前</text><text x="18" y="91">拖动后</text></g><g fill="none" stroke="#087d70" stroke-width="2.5" stroke-linejoin="round"><path d="M100 49H260V24H510"/><path d="M100 99H380V74H510"/></g><path d="M276 59H363m-8-5 8 5-8 5" fill="none" stroke="#9584ad" stroke-width="2"/></svg>
 <div class="examples"><div class="example"><strong>普通拖动：调整局部</strong><p>移动当前边界。连续单拍总线或紧邻的单拍翻转没有空隙时，顺延发生碰撞的相邻内容，保留数据顺序、标签和节点；遇到空闲位置即停止推动。</p></div><div class="example"><strong>Alt＋拖动：后续一起延迟</strong><p>按下鼠标时按住 Alt，再向右拖动。后续所有内容一起移动，彼此间距保持不变；其他信号不动。拖回起点恢复原位置，不会向左覆盖此前内容。</p></div></div>
 <p>支持 <code>0...1...</code>、<code>00001111</code> 等表示方式，也识别电平、未知态、高阻态与总线之间的相应边界。鼠标、触摸和触控笔共用边界拖动逻辑。</p>
 <div class="note">真实节点、间隙或其他标记仍会受到保护。若出现禁止光标，请查看边界提示。<code>p/n</code> 自动生成的时钟内部半拍边沿，暂不支持单独拖动。</div>
-</section>
+<h3>照着做</h3><ol class="steps"><li>选择“选择”工具，关闭自动连续模式。</li><li>靠近真实翻转处，确认出现左右拖动光标，再按下左键。</li><li>普通拖动只调整局部；要让全部后续一起延迟，在按下鼠标前按住 Alt。</li><li>拖错时先按 Esc 取消；松开后可用 Ctrl＋Z 撤销。</li></ol><figure class="demo" data-demo="edge-drag"><div class="demo-frame"><a href="./images/handbook/edge-drag.gif" target="_blank" rel="noopener" aria-label="单独查看：同一条边沿：普通拖动与 Alt 拖动"><img class="demo-image" src="./images/handbook/edge-drag.png" data-poster="./images/handbook/edge-drag.png" data-animation="./images/handbook/edge-drag.gif" width="900" height="579" loading="lazy" decoding="async" alt="先只移动上升沿，再撤销并按 Alt 移动，观察下降沿是否跟随。"></a></div><figcaption><strong>同一条边沿：普通拖动与 Alt 拖动</strong><p>先只移动上升沿，再撤销并按 Alt 移动，观察下降沿是否跟随。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/edge-drag.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure><h3>连续单拍总线怎么调？</h3><p>像 <code>x...222=x...</code> 这样的数据没有空闲拍，也可以直接拖边界。发生碰撞时只推动必要的数据块，已有数据顺序和标签不丢失。</p><figure class="demo" data-demo="dense-bus"><div class="demo-frame"><a href="./images/handbook/dense-bus.gif" target="_blank" rel="noopener" aria-label="单独查看：密集总线：碰到的数据块会让位"><img class="demo-image" src="./images/handbook/dense-bus.png" data-poster="./images/handbook/dense-bus.png" data-animation="./images/handbook/dense-bus.gif" width="900" height="579" loading="lazy" decoding="async" alt="向右、向左调整连续单拍总线；仅移动发生碰撞的相邻块。"></a></div><figcaption><strong>密集总线：碰到的数据块会让位</strong><p>向右、向左调整连续单拍总线；仅移动发生碰撞的相邻块。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/dense-bus.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
 <section id="wheel"><div class="number">03 / PRECISION</div><h2>Alt＋滚轮，只改当前一格</h2>
 <p>普通滚轮改变状态后，后面的 <code>.</code> 会继续继承它。按住 <kbd>Alt</kbd> 再滚动，会在下一格补回原状态，避免微调传播到整段。</p>
 <div class="examples"><div class="example"><strong>普通滚轮：影响后续延续</strong><p>例如把中间一格从低电平上滚成高电平：</p><code>0.... → 0.1..</code><p>对应逐拍电平：00000 → 00111。</p></div><div class="example"><strong>Alt＋滚轮：插入单拍变化</strong><p>同样修改中间一格，下一格恢复低电平：</p><code>0.... → 0.10.</code><p>对应逐拍电平：00000 → 00100。</p></div></div>
 <p>总线标签会在恢复原状态时保留。自动连续模式下，滚轮仍只作用于当前锁定格，不会自动推进。</p>
-</section>
+<h3>照着做</h3><ol class="steps"><li>悬停在需要微调的格子，上滚提高、下滚降低状态。</li><li>希望只改一格时，滚动前按住 Alt。</li><li>观察下一格是否恢复原值；不要把 Ctrl 缩放与 Alt 单格微调混淆。</li></ol><figure class="demo" data-demo="wheel"><div class="demo-frame"><a href="./images/handbook/wheel.gif" target="_blank" rel="noopener" aria-label="单独查看：普通滚轮 vs Alt＋滚轮"><img class="demo-image" src="./images/handbook/wheel.png" data-poster="./images/handbook/wheel.png" data-animation="./images/handbook/wheel.gif" width="900" height="579" loading="lazy" decoding="async" alt="同一低电平格：普通上滚带动延续段，Alt 上滚只改当前格。"></a></div><figcaption><strong>普通滚轮 vs Alt＋滚轮</strong><p>同一低电平格：普通上滚带动延续段，Alt 上滚只改当前格。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/wheel.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
 <section id="erase"><div class="number">04 / ERASE OR DELETE</div><h2>清除与删拍，是两种操作</h2>
 <p>WaveDrom 没有通用的“中间空白一拍”字符。这里将<strong>清除内容明确设为高阻态 <code>z</code></strong>，不再把它当作“变成延续格”。</p>
 <div class="examples"><div class="example"><strong>右键：当前格变为高阻态</strong><p>清除第 2 格（从 0 起），总长度不变，下一格恢复原低电平。</p><pre><code>原来：0...1...
 之后：0.z01...</code></pre></div><div class="example"><strong>Alt＋右键：删除这一拍</strong><p>同样操作第 2 格，删除一个延续格，后面的上升沿提前一拍。</p><pre><code>原来：0...1...
 之后：0..1...</code></pre></div></div>
 <ul><li>“清除本格”按钮和清除工具也采用高阻态语义。</li><li>Alt＋右键只缩短当前信号，其他信号与全局刻度不变。</li><li>删除或清除当前节点时，会清理引用该节点的连线；后续仍存在的节点及其连线关系会保留。</li><li>清除末尾格仍保留长度；工具栏的末尾减拍按钮则真正缩短波形。</li></ul>
-</section>
+<h3>照着做</h3><ol class="steps"><li>需要保留拍位时，右键当前格，将它设为高阻态 z。</li><li>需要缩短这条信号时，按 Alt＋右键删除当前拍。</li><li>对照其他信号和全局刻度，确认只有本信号后续前移。</li></ol><figure class="demo" data-demo="erase-delete"><div class="demo-frame"><a href="./images/handbook/erase-delete.gif" target="_blank" rel="noopener" aria-label="单独查看：清除不等于删拍"><img class="demo-image" src="./images/handbook/erase-delete.png" data-poster="./images/handbook/erase-delete.png" data-animation="./images/handbook/erase-delete.gif" width="900" height="579" loading="lazy" decoding="async" alt="右键将当前格置为 z；撤销后，用 Alt＋右键删除同一拍。"></a></div><figcaption><strong>清除不等于删拍</strong><p>右键将当前格置为 z；撤销后，用 Alt＋右键删除同一拍。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/erase-delete.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
 <section id="edges"><div class="number">05 / CONNECTIONS</div><h2>连线按“形状＋方向”选择</h2>
 <p>不必从一长串符号中辨认样式。现在分别选择<strong>路径形状</strong>和<strong>箭头方向</strong>，旁边实时显示实际路径预览；全局连线面板和节点连线弹窗使用同一套控件。</p>
 <div class="table-wrap"><table><thead><tr><th scope="col">路径</th><th scope="col">可用方向</th></tr></thead><tbody>
 <tr><td>直线、平滑曲线、直转曲</td><td>无箭头／终点箭头／双向箭头</td></tr><tr><td>曲转直</td><td>无箭头／终点箭头</td></tr><tr><td>先横后竖、横→竖→横</td><td>无箭头／终点箭头／双向箭头</td></tr><tr><td>先竖后横</td><td>无箭头／终点箭头</td></tr><tr><td>范围标记</td><td>两端短杠</td></tr>
 </tbody></table></div>
 <p>覆盖内置 WaveDrom 原生支持的 <strong>20 种组合</strong>，不支持的方向会禁用。切换形状时尽量保留原方向，不支持时使用可用方向。保存仍是标准 <code>edge</code> 语法。</p>
-</section>
+<h3>照着做</h3><ol class="steps"><li>在两个目标格中放置节点标记，再打开连线面板。</li><li>选择起点、终点与路径形状，再选择箭头方向。</li><li>用旁边的小预览确认走线，输入标注，最后查看波形中的实际连线。</li></ol><figure class="demo" data-demo="edge-styles"><div class="demo-frame"><a href="./images/handbook/edge-styles.gif" target="_blank" rel="noopener" aria-label="单独查看：连线：路径形状＋箭头方向"><img class="demo-image" src="./images/handbook/edge-styles.png" data-poster="./images/handbook/edge-styles.png" data-animation="./images/handbook/edge-styles.gif" width="900" height="579" loading="lazy" decoding="async" alt="切换三段折线、双向箭头和平滑曲线，观察样式预览与最终连线。"></a></div><figcaption><strong>连线：路径形状＋箭头方向</strong><p>切换三段折线、双向箭头和平滑曲线，观察样式预览与最终连线。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/edge-styles.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
 <section id="pulse"><div class="number">06 / GLITCH BRUSH</div><h2>毛刺笔刷：同电平显式字符与延续符切换</h2>
 <p>沿用“一键去毛刺”的同电平归一化规则，但只处理点选或涂到的格子。例如，WaveDrom 会在 <code>1111</code>／<code>0000</code> 的重复显式字符处画三角尖刺；<code>1...</code>／<code>0...</code> 则保持平线。编辑网格现在也显示这些官方样式的尖刺。</p>
 <p>点击预览底栏的“毛刺笔刷”，或在笔刷栏选择“毛刺”，然后在编辑网格上操作。</p>
 <div class="examples"><div class="example"><strong>点重复的显式字符：去除</strong><p>只将当前格改为延续符，不改变该段的高低电平、长度或其他毛刺。</p><code>1111 → 11.1</code><p>连续涂过后续三格，可得到 <code>1...</code>。</p></div><div class="example"><strong>再点延续格：添加／恢复</strong><p>将延续符恢复成该段的同电平显式字符；低电平采用对应规则。</p><code>1... → 1.1.</code><p>原来是 <code>h/H/l/L</code> 的格子，在当前编辑过程中再次点选会恢复原字符样式。</p></div></div>
 <ul><li>拖涂根据第一个有效格决定本次“去除”还是“添加”；一次拖涂中每格只切换一次。</li><li>段首、正常上升沿和下降沿不作去毛刺处理，<code>010/101</code> 的真实单拍脉冲也不被当作毛刺删除。</li><li>不改变时间长度，节点、连线和其他信号保持原样；不会跨越时钟、总线、未知态、高阻态或间隙。</li><li>编辑区的 <code>1m1</code>／<code>0m0</code> 半高度三角尖刺与 WaveDrom 官方皮肤对应；<code>h/H/l/L</code> 保留其原有垂直沿与箭头形态。</li><li>整次拖涂可以一次撤销；按 <kbd>Esc</kbd>、取消触摸或失去窗口焦点可取消当前笔刷操作。</li></ul>
 <div class="note">选择毛刺笔刷时会退出自动连续模式，并关闭自动去毛刺，避免全自动规则覆盖手动保留的毛刺。原有“一键去毛刺”仍作用于全图；只想修改局部时请使用笔刷。</div>
+<h3>照着做</h3><ol class="steps"><li>点击预览底栏或笔刷栏中的“毛刺”入口。</li><li>点重复的 1／0 去掉该处尖刺；再点延续格可恢复。</li><li>需要处理一段时拖涂过去；起点决定整笔是“去除”还是“添加”。</li></ol><figure class="demo" data-demo="glitch-brush"><div class="demo-frame"><a href="./images/handbook/glitch-brush.gif" target="_blank" rel="noopener" aria-label="单独查看：毛刺：局部去除、恢复与拖涂"><img class="demo-image" src="./images/handbook/glitch-brush.png" data-poster="./images/handbook/glitch-brush.png" data-animation="./images/handbook/glitch-brush.gif" width="900" height="579" loading="lazy" decoding="async" alt="重复的 1／0 显示尖刺；只平滑选中的区域，其余毛刺仍保留。"></a></div><figcaption><strong>毛刺：局部去除、恢复与拖涂</strong><p>重复的 1／0 显示尖刺；只平滑选中的区域，其余毛刺仍保留。</p><div class="demo-controls"><button class="demo-toggle" type="button" aria-pressed="false">播放 GIF</button><a href="./images/handbook/glitch-brush.gif" target="_blank" rel="noopener">单独查看／保存动图 ↗</a><span class="demo-status" aria-live="polite">尚未播放</span></div></figcaption></figure></section>
+<section id="save"><div class="number">SAVE YOUR WORK</div><h2>保存、导出与继续编辑</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">你要做什么</th><th scope="col">推荐操作</th></tr></thead><tbody><tr><td>以后继续改时序</td><td>“导出 → 下载 JSON”，下次通过“导入 → 打开文件”恢复。</td></tr><tr><td>放进文档、演示或网页</td><td>下载 WaveDrom SVG（矢量）或 PNG；需要编辑网格的现代配色时，选择“编辑区 SVG／PNG”。</td></tr><tr><td>交给其他人继续编辑</td><td>优先发送 JSON 原稿，也可以发送编辑器导出的、内嵌 WaveJSON 的 SVG／PNG。</td></tr><tr><td>在其他绘图工具里修改形状</td><td>导出 draw.io 或 Excalidraw；这些是形状快照，不能还原成可编辑的 WaveJSON。</td></tr></tbody></table></div>
+<div class="recipe">浏览器自动保存方便继续工作，但重要图表仍建议下载 JSON 文件留档。演示中的 Ctrl＋Z 只撤销当前图表操作，不是浏览器的“返回”。</div></section>
+<section id="faq"><div class="number">TROUBLESHOOTING</div><h2>遇到问题，先检查这里</h2>
+<details><summary>为什么拖不动边沿，或者出现禁止光标？</summary><p>先确认选的是“选择”工具、自动连续模式已关闭，并且鼠标靠近真实边界。独立节点、间隙或受保护标记可能限制移动；查看悬停提示。<code>p/n</code> 自动生成的半拍边沿暂不支持单独拖动。</p></details>
+<details><summary>毛刺为什么不是 010／101 脉冲？</summary><p>本笔刷沿用一键去毛刺的同电平规则：<code>1111 → 1...</code>、<code>0000 → 0...</code>。<code>010/101</code> 是真实电平变化，不会被这个笔刷删除。</p></details>
+<details><summary>清除后为什么显示 z，而不是空白？</summary><p>WaveDrom 没有通用的“中间空白一拍”字符。右键明确将当前格设为高阻态 <code>z</code>；要让这拍消失、后续前移，请使用 Alt＋右键。</p></details>
+<details><summary>Alt 单格修改为什么在间隙旁没有生效？</summary><p>下一格若是 <code>|</code>，恢复原状态会与保留间隙冲突，因此程序会提示并保护原内容。先调整间隙位置或使用普通状态笔刷。</p></details>
+<details><summary>动图看不清，或者想慢慢对照操作？</summary><p>点击“单独查看／保存动图”打开原尺寸 GIF。看完一组点击“停止播放”，再按本节的步骤在编辑器中操作。页面默认使用静态封面，避免多个动画同时干扰阅读。</p></details>
 </section>
 <section id="notes"><div class="number">BEFORE YOU START</div><h2>几个容易混淆的地方</h2>
 <ul><li><code>.</code> 延续上一状态；<code>x</code> 是未知态；<code>z</code> 是高阻态；<code>|</code> 是间隙标记，它们都不是通用空白格。</li><li>单格修改或清除时，如果下一格是间隙标记 <code>|</code>，会提示并保护原内容，避免为了恢复状态而丢失间隙。零宽子周期标记也受到保护。</li><li>普通拖动和 Alt＋拖动只在选择工具、非自动连续模式下启动，笔刷涂抹保留原来的行为。</li><li>拖动期间按 <kbd>Esc</kbd> 取消；完成后用 <kbd>Ctrl</kbd>＋<kbd>Z</kbd> 撤销，<kbd>Ctrl</kbd>＋<kbd>Y</kbd> 重做。Mac 可使用对应的 Command 撤销快捷键。</li></ul>
 </section>
-<footer><a href="./">返回编辑器</a><a href="https://github.com/SuperiorLQF/wave_drom_gui">GitHub 仓库</a><p>本页整理本项目新增的编辑功能。原项目的完整功能介绍见仓库 README 和 EDITOR.md。</p></footer>
+<footer><a href="./">返回编辑器</a><a href="https://github.com/SuperiorLQF/wave_drom_gui">GitHub 仓库</a><p>本页包含真实录制的常见操作、快捷键和排错步骤。原项目的完整功能介绍见仓库 README 和 EDITOR.md。</p></footer>
+<a class="return-top" href="#start">回到快速上手 ↑</a>
 </main>
+<script>
+(() => {
+  const figures = [...document.querySelectorAll('.demo')];
+  function stop(figure) {
+    const img=figure.querySelector('.demo-image'),button=figure.querySelector('.demo-toggle');
+    img.src=img.dataset.poster;button.setAttribute('aria-pressed','false');button.textContent='播放 GIF';
+    figure.querySelector('.demo-status').textContent='已停止 · 静态封面';
+  }
+  figures.forEach(figure=>figure.querySelector('.demo-toggle').addEventListener('click',()=>{
+    const button=figure.querySelector('.demo-toggle');
+    if(button.getAttribute('aria-pressed')==='true'){stop(figure);return;}
+    figures.forEach(other=>{if(other!==figure&&other.querySelector('.demo-toggle').getAttribute('aria-pressed')==='true')stop(other)});
+    const img=figure.querySelector('.demo-image');img.src=img.dataset.animation;
+    button.setAttribute('aria-pressed','true');button.textContent='停止播放';
+    figure.querySelector('.demo-status').textContent='播放中 · 可单独查看原尺寸';
+  }));
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)figures.forEach(f=>{if(f.querySelector('.demo-toggle').getAttribute('aria-pressed')==='true')stop(f)})});
+  document.querySelector('.copy-example').addEventListener('click',async()=>{
+    const text=document.getElementById('practice-json').textContent,status=document.getElementById('copy-status');
+    try{await navigator.clipboard.writeText(text);status.textContent=' 已复制，可粘贴到“导入 → 粘贴 WaveJSON”';}
+    catch{const selection=window.getSelection(),range=document.createRange();range.selectNodeContents(document.getElementById('practice-json'));selection.removeAllRanges();selection.addRange(range);status.textContent=' 已选中，请手动复制';}
+  });
+})();
+</script>
 </body>
 </html>
