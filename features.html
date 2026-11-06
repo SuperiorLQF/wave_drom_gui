@@ -17,7 +17,7 @@
 <h1>新增功能，怎么用。</h1>
 <p class="intro">这里集中说明本项目新增的时间轴缩放、边沿拖动、单格微调、清除与删拍，以及连线选择方式。操作主要作用于中间的编辑网格。</p>
 <a class="button" href="./">打开编辑器</a>
-<nav class="toc" aria-label="本页目录"><a href="#shortcuts">快捷操作</a><a href="#zoom">缩放</a><a href="#drag">边界拖动</a><a href="#wheel">单格微调</a><a href="#erase">清除与删拍</a><a href="#edges">连线样式</a><a href="#notes">注意事项</a></nav>
+<nav class="toc" aria-label="本页目录"><a href="#shortcuts">快捷操作</a><a href="#zoom">缩放</a><a href="#drag">边界拖动</a><a href="#wheel">单格微调</a><a href="#pulse">毛刺笔刷</a><a href="#erase">清除与删拍</a><a href="#edges">连线样式</a><a href="#notes">注意事项</a></nav>
 <section id="shortcuts"><div class="number">QUICK REFERENCE</div><h2>快捷操作速查</h2>
 <div class="table-wrap"><table><thead><tr><th scope="col">操作</th><th scope="col">效果</th></tr></thead><tbody>
 <tr><td><kbd>Ctrl</kbd> ＋ 滚轮</td><td>缩放编辑网格时间轴，范围 25%～300%。</td></tr>
@@ -59,6 +59,13 @@
 <tr><td>直线、平滑曲线、直转曲</td><td>无箭头／终点箭头／双向箭头</td></tr><tr><td>曲转直</td><td>无箭头／终点箭头</td></tr><tr><td>先横后竖、横→竖→横</td><td>无箭头／终点箭头／双向箭头</td></tr><tr><td>先竖后横</td><td>无箭头／终点箭头</td></tr><tr><td>范围标记</td><td>两端短杠</td></tr>
 </tbody></table></div>
 <p>覆盖内置 WaveDrom 原生支持的 <strong>20 种组合</strong>，不支持的方向会禁用。切换形状时尽量保留原方向，不支持时使用可用方向。保存仍是标准 <code>edge</code> 语法。</p>
+</section>
+<section id="pulse"><div class="number">06 / GLITCH BRUSH</div><h2>毛刺笔刷：同电平显式字符与延续符切换</h2>
+<p>沿用“一键去毛刺”的同电平归一化规则，但只处理点选或涂到的格子。例如，WaveDrom 会在 <code>1111</code>／<code>0000</code> 的重复显式字符处画三角尖刺；<code>1...</code>／<code>0...</code> 则保持平线。编辑网格现在也显示这些官方样式的尖刺。</p>
+<p>点击预览底栏的“毛刺笔刷”，或在笔刷栏选择“毛刺”，然后在编辑网格上操作。</p>
+<div class="examples"><div class="example"><strong>点重复的显式字符：去除</strong><p>只将当前格改为延续符，不改变该段的高低电平、长度或其他毛刺。</p><code>1111 → 11.1</code><p>连续涂过后续三格，可得到 <code>1...</code>。</p></div><div class="example"><strong>再点延续格：添加／恢复</strong><p>将延续符恢复成该段的同电平显式字符；低电平采用对应规则。</p><code>1... → 1.1.</code><p>原来是 <code>h/H/l/L</code> 的格子，在当前编辑过程中再次点选会恢复原字符样式。</p></div></div>
+<ul><li>拖涂根据第一个有效格决定本次“去除”还是“添加”；一次拖涂中每格只切换一次。</li><li>段首、正常上升沿和下降沿不作去毛刺处理，<code>010/101</code> 的真实单拍脉冲也不被当作毛刺删除。</li><li>不改变时间长度，节点、连线和其他信号保持原样；不会跨越时钟、总线、未知态、高阻态或间隙。</li><li>编辑区的 <code>1m1</code>／<code>0m0</code> 半高度三角尖刺与 WaveDrom 官方皮肤对应；<code>h/H/l/L</code> 保留其原有垂直沿与箭头形态。</li><li>整次拖涂可以一次撤销；按 <kbd>Esc</kbd>、取消触摸或失去窗口焦点可取消当前笔刷操作。</li></ul>
+<div class="note">选择毛刺笔刷时会退出自动连续模式，并关闭自动去毛刺，避免全自动规则覆盖手动保留的毛刺。原有“一键去毛刺”仍作用于全图；只想修改局部时请使用笔刷。</div>
 </section>
 <section id="notes"><div class="number">BEFORE YOU START</div><h2>几个容易混淆的地方</h2>
 <ul><li><code>.</code> 延续上一状态；<code>x</code> 是未知态；<code>z</code> 是高阻态；<code>|</code> 是间隙标记，它们都不是通用空白格。</li><li>单格修改或清除时，如果下一格是间隙标记 <code>|</code>，会提示并保护原内容，避免为了恢复状态而丢失间隙。零宽子周期标记也受到保护。</li><li>普通拖动和 Alt＋拖动只在选择工具、非自动连续模式下启动，笔刷涂抹保留原来的行为。</li><li>拖动期间按 <kbd>Esc</kbd> 取消；完成后用 <kbd>Ctrl</kbd>＋<kbd>Z</kbd> 撤销，<kbd>Ctrl</kbd>＋<kbd>Y</kbd> 重做。Mac 可使用对应的 Command 撤销快捷键。</li></ul>

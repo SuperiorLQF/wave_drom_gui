@@ -798,6 +798,7 @@ html:not([data-mobile])[data-show-preview="0"][data-show-code="0"] #splitMain { 
 .cell.painting { background: var(--cell-paint); }
 .cell.boundary-hover { cursor: ew-resize; box-shadow: inset 2px 0 var(--acc); }
 .cell.boundary-locked { cursor: not-allowed; }
+body.glitch-brushing, body.glitch-brushing * { cursor: crosshair !important; user-select: none !important; }
 body.boundary-dragging, body.boundary-dragging * { cursor: ew-resize !important; user-select: none !important; }
 .cell.chain-sel { background: var(--cell-hl); box-shadow: inset 0 0 0 2px var(--acc); border-radius: 3px; }
 .grid-empty {
@@ -936,7 +937,7 @@ body.boundary-dragging, body.boundary-dragging * { cursor: ew-resize !important;
   background: var(--panel);
 }
 .preview-foot .dg-state { margin-left: 2px; font-weight: 600; opacity: .75; }
-#deglitchAutoBtn.on { color: var(--acc-text); border-color: var(--acc); background: var(--acc-veil); }
+#glitchBrushBtn.on, #deglitchAutoBtn.on { color: var(--acc-text); border-color: var(--acc); background: var(--acc-veil); }
 #deglitchAutoBtn.on .dg-state { opacity: 1; }
 html[data-theme="dark"] #wv0 svg { filter: invert(0.91) hue-rotate(180deg) contrast(1.05); }
 html:not([data-theme]) #wv0 svg { filter: invert(0.91) hue-rotate(180deg) contrast(1.05); }
@@ -1495,6 +1496,7 @@ html[data-mobile] {
     <div class="pane active" id="pane-preview">
       <div class="preview-stage" id="previewStage"><div class="zoom-wrap" id="zoomWrap"><div id="wv0"></div></div></div>
       <div class="preview-foot">
+        <button class="btn" id="glitchBrushBtn" aria-pressed="false" title="同电平毛刺笔刷：点一下去除，再点添加" data-i18n-title="同电平毛刺笔刷：点一下去除，再点添加"><span data-i18n="毛刺笔刷">毛刺笔刷</span></button>
         <button class="btn" id="deglitchBtn" data-i18n-title="扫描全图，把同电平段里的冗余电平字符合并成延续符" data-i18n-aria="扫描全图，把同电平段里的冗余电平字符合并成延续符"><span data-i18n="一键去毛刺">一键去毛刺</span></button>
         <button class="btn" id="deglitchAutoBtn" aria-pressed="false" data-i18n-title="会实时自动使用延续符尽可能合并相同电平信号！" data-i18n-aria="会实时自动使用延续符尽可能合并相同电平信号！"><span data-i18n="自动去毛刺">自动去毛刺</span><span class="dg-state" id="dgAutoState">关</span></button>
       </div>
@@ -1698,6 +1700,11 @@ try { module.exports = WaveSkin; } catch(err) {}
 /* WaveDrom 可视化编辑器 —— 单文件应用逻辑 */
 /* ---------- 界面语言（顶栏地球按钮）：中文为基准，英文走词典；默认跟随系统 ---------- */
 const I18N_EN = {
+  '毛刺笔刷': 'Glitch brush', '同电平毛刺笔刷：点一下去除，再点添加': 'Same-level glitch brush: click to remove, click again to add',
+  '毛刺切换': 'Toggle glitch', '毛刺': 'Glitch',
+  '毛刺笔刷已关闭自动去毛刺，手动添加的毛刺将保留': 'Automatic deglitching is off so manually added glitches are preserved',
+  '点选或拖过电平格：去除毛刺，再点可添加；不改变正常翻转': 'Click or brush level cells to remove/add glitches; real transitions are preserved',
+
   '新增功能与操作指南': 'New features and controls',
   '右键将本格置为高阻态 z；Alt＋右键删除本拍并前移后续波形': 'Right-click: set this cell to high impedance z; Alt + right-click: delete the cycle and shift the rest left',
   '将当前格置为高阻态 z，保留拍位': 'Set this cell to high impedance z without deleting the cycle',
@@ -3569,7 +3576,10 @@ function laneSVG(lane, colCount, color, cropX, noVeil) {
     switch (g) {
       case '1': {
         const target = HI;
-        if (lvl === null || lvl === target) { M(x0, target); }
+        if (pg !== null && '1hHnN'.includes(pg)) {
+          M(x0, target); Hline(x0 + CELLW * .075);
+          L(x0 + CELLW * .15, MID); L(x0 + CELLW * .225, target);
+        } else if (lvl === null || lvl === 'hi') { M(x0, target); }
         else {
           // 官方 0m1/1m0 几何：过渡固定占第一个基准子格（36px）的 15%~45%，不随 hscale/period 缩放
           M(x0, yOf(lvl)); d += `H${x0 + CELLW * .075}L${x0 + CELLW * .225} ${target}`;
@@ -3578,7 +3588,10 @@ function laneSVG(lane, colCount, color, cropX, noVeil) {
       }
       case '0': {
         const target = LO;
-        if (lvl === null || lvl === target) { M(x0, target); }
+        if (pg !== null && '0lLpP'.includes(pg)) {
+          M(x0, target); Hline(x0 + CELLW * .075);
+          L(x0 + CELLW * .15, MID); L(x0 + CELLW * .225, target);
+        } else if (lvl === null || lvl === 'lo') { M(x0, target); }
         else { M(x0, yOf(lvl)); d += `H${x0 + CELLW * .075}L${x0 + CELLW * .225} ${target}`; }
         Hline(x1); lvl = 'lo'; break;
       }
@@ -5296,6 +5309,7 @@ function renderPreview(prebuilt) {
 let rafPending = false, saveTimer = null, previewTimer = null;
 function scheduleUpdate() { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; update(); }); }
 function update(structureChanged) {
+  if (glitchGesture) { renderGrid(); renderCode(); renderPreview(); return; }
   lanePosCache = new WeakMap(); // 本帧通道定位缓存作废（所有改动都汇到 update，见 laneCharPositions）
   laneOrderCache = null;        // 同上：自动配色序号表重建
   applyAutoScale(); // 打开时先按标签重算水平缩放，再序列化（hscale 的变化并入本次编辑的同一步撤销）
@@ -5327,11 +5341,19 @@ function persist() {
 }
 
 /* ---------- 交互：笔刷（多模式：横条 / 分组弹层 / 右缘竖列 / 右下角扇形） ---------- */
-const brushIdTool = id => (id === 'select' || id === 'erase') ? { type: id } : { type: 'glyph', char: id };
+const brushIdTool = id => (id === 'select' || id === 'erase' || id === 'glitch') ? { type: id } : { type: 'glyph', char: id };
 const brushActive = id => id === 'select' ? state.tool.type === 'select'
   : id === 'erase' ? state.tool.type === 'erase'
+  : id === 'glitch' ? state.tool.type === 'glitch'
   : state.tool.type === 'glyph' && state.tool.char === id;
 function setBrush(id, anchor) {
+  if (id === 'glitch') {
+    if (autoChain) exitAutoChain();
+    if (deglitchOn()) {
+      setDeglitch(false);
+      toast(i18n('毛刺笔刷已关闭自动去毛刺，手动添加的毛刺将保留'));
+    }
+  }
   if (autoChain && chainSel && id !== 'select' && id !== 'erase') {
     /* 自动连续模式：点波形笔刷 = 直接给当前选中格上色并右移（不切换当前工具） */
     const fly = document.querySelector('#brushFly.on');
@@ -5350,6 +5372,8 @@ function setBrush(id, anchor) {
     }
   }
   state.tool = brushIdTool(id);
+  const pulseBtn = $('#glitchBrushBtn');
+  if (pulseBtn) { pulseBtn.classList.toggle('on', id === 'glitch'); pulseBtn.setAttribute('aria-pressed', String(id === 'glitch')); }
   document.querySelectorAll('[data-brush]').forEach(b => b.classList.toggle('active', b.dataset.brush === id));
   closePop();
   closeBrushPanel();
@@ -5358,6 +5382,7 @@ function setBrush(id, anchor) {
   else closeBrushFly();
 }
 function brushFace(id, w, hgt, iconSize) {
+  if (id === 'glitch') return icon('<path d="M1 11h6V3h2v8h6"/><path d="m11 4 3-2m-1 5 2 1"/>', iconSize);
   if (id === 'select') return icon('<path d="M4 2l8 6.5-3.4.8 1.9 4-1.8.8-1.9-4L4 13z"/>', iconSize);
   if (id === 'erase') return icon('<path d="M6 12.5 2.8 9.3a1.4 1.4 0 0 1 0-2l4.5-4.5a1.4 1.4 0 0 1 2 0l3.9 3.9a1.4 1.4 0 0 1 0 2l-3.8 3.8zM5 13.5h8"/>', iconSize);
   if (id === '.') {
@@ -5378,15 +5403,15 @@ function brushFace(id, w, hgt, iconSize) {
 function brushBtn(id, variant) {
   const v = variant || 'bar';
   const sizeCls = v === 'fly' ? ' sm' : v === 'edge' ? ' edge' : '';
-  const name = id === 'select' ? i18n('选择') : id === 'erase' ? i18n('清除') : id === '.' ? i18n('延续') : i18n(GLYPH_MAP[id].name);
+  const name = id === 'select' ? i18n('选择') : id === 'erase' ? i18n('清除') : id === 'glitch' ? i18n('毛刺切换') : id === '.' ? i18n('延续') : i18n(GLYPH_MAP[id].name);
   const b = h('button', {
     class: 'tool' + sizeCls + (brushActive(id) ? ' active' : ''),
-    'data-brush': id, title: id === '.' ? i18n('延续（.）—— 让上一拍的状态再延续一拍') : id === 'erase' ? i18n('清除（右键单击单元格即可）') : `${name} (${id})`,
+    'data-brush': id, title: id === 'glitch' ? i18n('点选或拖过电平格：去除毛刺，再点可添加；不改变正常翻转') : id === '.' ? i18n('延续（.）—— 让上一拍的状态再延续一拍') : id === 'erase' ? i18n('清除（右键单击单元格即可）') : `${name} (${id})`,
     'aria-label': i18n('笔刷：') + name,
   });
   const dims = (v === 'bar' || v === 'panel') ? [30, 18, 18] : [26, 15, 15];
   b.appendChild(brushFace(id, dims[0], dims[1], dims[2]));
-  b.appendChild(h('span', { class: 'tlabel' }, id === 'select' ? i18n('选择') : id === 'erase' ? i18n('清除') : id === '.' ? i18n('延续') : id));
+  b.appendChild(h('span', { class: 'tlabel' }, id === 'select' ? i18n('选择') : id === 'erase' ? i18n('清除') : id === 'glitch' ? i18n('毛刺') : id === '.' ? i18n('延续') : id));
   b.addEventListener('click', ev => { ev.stopPropagation(); setBrush(id, b); });
   return b;
 }
@@ -5405,7 +5430,7 @@ function foldBtn(title, dir, onFold) {
 }
 /* 纯文本紧凑笔刷按钮（选择 / 清除 / 延续，无图标） */
 function brushTxtBtn(id) {
-  const name = id === 'select' ? i18n('选择') : id === 'erase' ? i18n('清除') : i18n('延续');
+  const name = id === 'select' ? i18n('选择') : id === 'erase' ? i18n('清除') : id === 'glitch' ? i18n('毛刺') : i18n('延续');
   const b = h('button', {
     class: 'tool txt' + (brushActive(id) ? ' active' : ''),
     'data-brush': id, title: id === 'erase' ? i18n('清除（右键单击单元格即可）') : `${name} (${id})`, 'aria-label': i18n('笔刷：') + name,
@@ -5455,6 +5480,7 @@ function buildBarPalette(pal) {
   pal.appendChild(foldBtn(i18n('折叠笔刷栏'), 'down', () => setBrushMode('compact')));
   pal.appendChild(brushBtn('select'));
   pal.appendChild(brushBtn('erase'));
+  pal.appendChild(brushBtn('glitch'));
   pal.appendChild(brushBtn('.'));
   pal.appendChild(h('span', { class: 'psep' }));
   GLYPHS.forEach(g => pal.appendChild(brushBtn(g.c)));
@@ -5465,7 +5491,7 @@ function buildCompactPalette(pal) {
   pal.appendChild(foldBtn(i18n('折叠为右下角按钮'), 'right', () => setBrushMode('fab')));
   const mobile = isMobile();
   // 手机：延续已并入每个分组，不再单列独立笔刷
-  (mobile ? ['select', 'erase'] : ['select', 'erase', '.']).forEach(id => pal.appendChild(brushTxtBtn(id)));
+  (mobile ? ['select', 'erase', 'glitch'] : ['select', 'erase', 'glitch', '.']).forEach(id => pal.appendChild(brushTxtBtn(id)));
   pal.appendChild(h('span', { class: 'psep' }));
   curBrushGroups().forEach(g => pal.appendChild(groupChip(g, false)));
   pal.appendChild(h('div', { id: 'brushFly' }));
@@ -5478,7 +5504,7 @@ function buildVGroupPalette() {
     foldBtn(i18n('展开为右侧面板'), 'left', () => setBrushMode('panel'))));
   const col = h('div', { class: 'vgroup-col' });
   const mobile = isMobile();
-  (mobile ? ['select', 'erase'] : ['select', 'erase', '.']).forEach(id => col.appendChild(brushTxtBtn(id)));
+  (mobile ? ['select', 'erase', 'glitch'] : ['select', 'erase', 'glitch', '.']).forEach(id => col.appendChild(brushTxtBtn(id)));
   curBrushGroups().forEach(g => col.appendChild(groupChip(g, true)));
   root.appendChild(col);
 }
@@ -5545,10 +5571,10 @@ let brushPanelHideTimer = null;
 function createBrushPanel() {
   const panel = h('div', { class: 'popover open', role: 'dialog', 'aria-label': i18n('笔刷面板') });
   const tools = h('div', { class: 'pop-glyphs', style: 'margin-bottom:4px' });
-  [['select', i18n('选择')], ['erase', i18n('清除')]].forEach(([id, name]) => {
+  [['select', i18n('选择')], ['erase', i18n('清除')], ['glitch', i18n('毛刺切换')]].forEach(([id, name]) => {
     const b = h('button', { class: 'pg' + (brushActive(id) ? ' active' : ''), title: name, 'aria-label': name });
     b.appendChild(brushFace(id, 26, 15, 15));
-    b.appendChild(h('span', { class: 'tlabel' }, name));
+    b.appendChild(h('span', { class: 'tlabel' }, id === 'glitch' ? i18n('毛刺') : name));
     b.addEventListener('click', ev => { ev.stopPropagation(); setBrush(id, b); });
     tools.appendChild(b);
   });
@@ -5585,7 +5611,7 @@ function buildPanelCol() {
   const root = $('#brushCol');
   root.appendChild(h('div', { class: 'be-top' }, foldBtn(i18n('折叠为右纵条'), 'right', () => setBrushMode('vgroup'))));
   const grid = h('div', { class: 'brush-grid' });
-  ['select', 'erase', '.'].forEach(id => grid.appendChild(brushBtn(id, 'panel')));
+  ['select', 'erase', 'glitch', '.'].forEach(id => grid.appendChild(brushBtn(id, 'panel')));
   GLYPHS.forEach(g => grid.appendChild(brushBtn(g.c, 'panel')));
   root.appendChild(grid);
   layoutBrushGrid();
@@ -5635,8 +5661,113 @@ function dragZoneAt(ev, el) {
   return null;
 }
 function getLaneById(id) { let r = null; eachLane(l => { if (l.id === id) r = l; }); return r; }
+/* Local version of deglitchAll: same-level explicit characters versus holds.
+   The original character is remembered on the hold for a reversible toggle. */
+let glitchGesture = null;
+const glitchRestore = new WeakMap();
+function sameLevelBrushAction(lane, t) {
+  if (t <= 0 || t >= laneLen(lane)) return null;
+  const slot = lane.slots[t];
+  if (!slot) return null;
+  let before = t - 1;
+  while (before >= 0 && lane.slots[before]?.glyph === '.') before--;
+  const previous = lane.slots[before]?.glyph;
+  const group = DEGLITCH_HI.includes(previous || '!') ? DEGLITCH_HI
+    : DEGLITCH_LO.includes(previous || '!') ? DEGLITCH_LO : null;
+  if (!group) return null; // Do not cross gaps, clocks, unknowns or data.
+  if (slot.glyph === '.') return { mode: 'add', group };
+  return group.includes(slot.glyph) ? { mode: 'remove', group } : null;
+}
+function toggleSameLevelGlitch(lane, t, mode = null) {
+  const action = sameLevelBrushAction(lane, t);
+  if (!action || mode && action.mode !== mode) return false;
+  const old = lane.slots[t];
+  if (action.mode === 'remove') {
+    const hold = { ...old, glyph: '.' };
+    glitchRestore.set(hold, old);
+    lane.slots[t] = hold;
+  } else {
+    const saved = glitchRestore.get(old);
+    lane.slots[t] = saved && action.group.includes(saved.glyph) ? saved
+      : { ...old, glyph: action.group === DEGLITCH_HI ? '1' : '0' };
+  }
+  return true;
+}
+function bindGlitchBrush(inner) {
+  let suppressClick = false;
+  const render = () => { lanePosCache = new WeakMap(); renderGrid(); renderCode(); renderPreview(); };
+  const visit = cell => {
+    if (!glitchGesture || !cell) return;
+    const lane = getLaneById(+cell.dataset.lane), t = +cell.dataset.t;
+    if (!lane) return;
+    const previous = glitchGesture.last;
+    if (previous && previous.lane === lane.id && previous.t === t) return;
+    const start = previous && previous.lane === lane.id ? previous.t : t;
+    for (let k = Math.min(start, t); k <= Math.max(start, t); k++) {
+      const key = lane.id + ':' + k;
+      if (glitchGesture.visited.has(key)) continue;
+      glitchGesture.visited.add(key);
+      if (!glitchGesture.originals.has(lane)) glitchGesture.originals.set(lane, { slots: lane.slots.slice(), len: lane.len });
+      const action = sameLevelBrushAction(lane, k);
+      if (!glitchGesture.mode && action) glitchGesture.mode = action.mode;
+      if (toggleSameLevelGlitch(lane, k, glitchGesture.mode)) glitchGesture.changed = true;
+    }
+    glitchGesture.last = { lane: lane.id, t };
+    render();
+  };
+  const finish = cancel => {
+    if (!glitchGesture) return;
+    const gesture = glitchGesture; glitchGesture = null;
+    try { if (inner.hasPointerCapture(gesture.pointer)) inner.releasePointerCapture(gesture.pointer); } catch (e) { /* already released */ }
+    document.body.classList.remove('glitch-brushing');
+    suppressClick = true;
+    if (cancel) {
+      for (const [lane, original] of gesture.originals) { lane.slots = original.slots; lane.len = original.len; }
+      render(); persist();
+    } else if (gesture.changed) {
+      lastCommitTag = null; commitTag = 'glitch-brush'; update();
+    }
+  };
+  inner.addEventListener('pointerdown', ev => {
+    if (glitchGesture) { ev.preventDefault(); ev.stopImmediatePropagation(); finish(true); return; }
+    if (state.tool.type !== 'glitch' || ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
+    const cell = ev.target.closest('.cell');
+    if (!cell) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    if (rafPending) update();
+    clearTimeout(saveTimer); clearTimeout(previewTimer);
+    closePop(); painting = false; extendMode = false;
+    glitchGesture = { pointer: ev.pointerId, visited: new Set(), originals: new Map(), changed: false, last: null };
+    try { inner.setPointerCapture(ev.pointerId); } catch (e) { /* already released */ }
+    document.body.classList.add('glitch-brushing');
+    visit(cell);
+  }, true);
+  window.addEventListener('pointermove', ev => {
+    if (!glitchGesture || ev.pointerId !== glitchGesture.pointer) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    visit(document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.cell'));
+  }, true);
+  window.addEventListener('pointerup', ev => { if (glitchGesture?.pointer === ev.pointerId) finish(false); }, true);
+  window.addEventListener('pointercancel', ev => { if (glitchGesture?.pointer === ev.pointerId) finish(true); }, true);
+  inner.addEventListener('lostpointercapture', ev => { if (glitchGesture?.pointer === ev.pointerId) finish(true); });
+  window.addEventListener('blur', () => finish(true));
+  window.addEventListener('keydown', ev => {
+    if (!glitchGesture) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    if (ev.key === 'Escape') finish(true);
+  }, true);
+  inner.addEventListener('click', ev => {
+    if (!suppressClick) return;
+    ev.preventDefault(); ev.stopImmediatePropagation(); suppressClick = false;
+  }, true);
+  inner.addEventListener('wheel', ev => {
+    if (!glitchGesture) return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+  }, { capture: true, passive: false });
+}
+
 /* ---------- 自动去毛刺：电平字符写入后，把所在连续同电平段归一化成「段首 + 延续符」 ----------
-   同电平的 1/0 画平线无毛刺但字符冗余；同电平的 h/H/l/L 会画出贯穿低高的竖沿（+箭头）＝毛刺。
+   同电平的 1/0 在官方皮肤中画半高度三角尖刺；h/H/l/L 画贯穿低高的竖沿（+箭头）。
    归一化后段首（真实跳变处，沿/箭头落点）保留原字符，段内其余显式字符换成延续符，几何不变。 */
 const DEGLITCH_HI = '1Hh', DEGLITCH_LO = '0Ll';
 /* 默认关：只有显式存过 '1'（或早期版本点「开」存下的 'on'）才视为开 */
@@ -5686,11 +5817,11 @@ function deglitchAll() {
       const sl = lane.slots[i];
       const g = sl ? sl.glyph : '';
       if (g === '.') continue; // 延续格：段内原样留着（段外也无从合并）
-      const set = DEGLITCH_HI.includes(g) ? DEGLITCH_HI : DEGLITCH_LO.includes(g) ? DEGLITCH_LO : null;
+      const set = g && DEGLITCH_HI.includes(g) ? DEGLITCH_HI : g && DEGLITCH_LO.includes(g) ? DEGLITCH_LO : null;
       if (!set) { cur = null; continue; } // 异电平/沿/时钟/不定/数据/间隙/空槽：段结束
       if (set === cur) {
         lane.slots[i] = { ...sl, glyph: '.' };
-        if (g === 'h' || g === 'H' || g === 'l' || g === 'L') spikes++; else merged++;
+        spikes++; merged++;
       } else cur = set; // 新段段首（真实跳变处）：保留
     }
   });
@@ -6724,10 +6855,11 @@ function bindBoundaryDrag(inner) {
 /* 网格事件委托 */
 function bindGrid() {
   const inner = $('#gridInner');
+  bindGlitchBrush(inner);
   bindBoundaryDrag(inner);
   $('#gridZoomReset').addEventListener('click', () => setGridZoom(1));
   $('#gridScroll').addEventListener('wheel', ev => {
-    if (document.body.classList.contains('boundary-dragging')) { ev.preventDefault(); return; }
+    if (glitchGesture || document.body.classList.contains('boundary-dragging')) { ev.preventDefault(); return; }
     // Capture before the existing cell-state wheel handler. Other modifiers and
     // editable controls retain their native behavior; preview is untouched.
     if (!ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return;
@@ -9519,6 +9651,7 @@ function init() {
   bindSplitters();
 
   /* 预览底栏：一键去毛刺（不受自动开关影响）与自动去毛刺开关（与设置里的同名项同一份偏好） */
+  $('#glitchBrushBtn').addEventListener('click', () => setBrush(state.tool.type === 'glitch' ? 'select' : 'glitch'));
   const dgBtn = $('#deglitchBtn'), dgAuto = $('#deglitchAutoBtn');
   if (dgBtn) dgBtn.addEventListener('click', () => {
     const r = deglitchAll();
