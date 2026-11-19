@@ -2,13 +2,17 @@
 
 [简体中文](./README.md) | **English**
 
+👉 **[Open the latest editor](https://superiorlqf.github.io/wave_drom_gui/)** · **[Handbook with recorded GIFs](https://superiorlqf.github.io/wave_drom_gui/features.html)**
+
+This repository extends [upstream WaveDrom-Gui](https://cnb.cool/linshi-2026/wavedrom-gui). These links deploy this repository’s `main` branch, including timeline zoom, edge dragging, the glitch brush, and the handbook.
+
 A WaveDrom timing-diagram toolkit with four products: a click-to-edit **web visual editor**, a browser-free **command-line rendering Skill**, a **VS Code extension** (beta), and a **kodbox plugin** (beta). They are wired together through image metadata — **SVGs/PNGs exported by the Skill embed the WaveJSON, and the web editor's "Open file" restores them into an editable diagram**. Zero build, works offline. The code was written in collaboration with GLM-5.3-flash, Qwen3.8-max, deepseek-v4-flash-exp, mimo-v25-pro and claude-opus-4.8 — a spare-time project. Feel free to use it, file issues, send PRs, or star it!
 
 ![Screenshot](./images/wavedrom-gui.png)
 
 ## Product 1: WaveDrom web editor
 
-A single-file HTML app (~650 KB): click and drag to edit WaveDrom timing diagrams, with the official engine rendering live on the right and WaveJSON generated in sync. Open `index.html` directly in a browser (works over `file://`, no server needed), or use the [demo site](https://wave.rtlyes.cn/) (free hosting, availability not guaranteed).
+A single-file HTML app (~650 KB): click and drag to edit WaveDrom timing diagrams, with the official engine rendering live on the right and WaveJSON generated in sync. Open `index.html` directly in a browser (works over `file://`, no server needed), or use the [live editor for this repository](https://superiorlqf.github.io/wave_drom_gui/).
 
 Highlights:
 

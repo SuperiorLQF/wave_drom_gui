@@ -1549,7 +1549,7 @@ html[data-mobile] {
     <h3><span data-i18n="关于">关于</span> WaveDrom-Gui <span class="ver-badge" data-app-version>dev</span></h3>
     <p data-i18n="单文件 HTML 应用，零构建、离线可用：鼠标点击编辑时序图，同时官方引擎实时渲染，同步生成 WaveJSON。内嵌官方 WaveDrom v3.5.0 渲染库与 default / narrow 两套皮肤。">单文件 HTML 应用，零构建、离线可用：鼠标点击编辑时序图，同时官方引擎实时渲染，同步生成 WaveJSON。内嵌官方 WaveDrom v3.5.0 渲染库与 default / narrow 两套皮肤。</p>
     <p data-i18n="支持深浅主题、常用wavedrom语法，以及 SVG / PNG / JSON / 分享链接导出。">支持深浅主题、常用wavedrom语法，以及 SVG / PNG / JSON / 分享链接导出。</p>
-    <p><span data-i18n="仓库地址：">仓库地址：</span><a href="https://cnb.cool/linshi-2026/wavedrom-gui" target="_blank" rel="noopener">cnb.cool/linshi-2026/wavedrom-gui</a></p>
+    <p><span data-i18n="仓库地址：">仓库地址：</span><a href="https://github.com/SuperiorLQF/wave_drom_gui" target="_blank" rel="noopener">github.com/SuperiorLQF/wave_drom_gui</a></p>
     <div class="m-foot">
       <button class="btn ghost" data-act="about-close" data-i18n="关闭">关闭</button>
       <button class="btn primary" data-act="about-repo" data-i18n="打开仓库 ↗">打开仓库 ↗</button>
@@ -9274,7 +9274,7 @@ function handleAct(act, btn) {
       toast(i18n('已关闭提示（') + i18n(kind === 'never' ? '永久' : kind === 'day' ? '一天' : '一周') + i18n('）；之后可在 设置 → 笔刷 → 自动缩放 或 左栏「图表」→ 波形 → 自动缩放 打开'));
       break;
     }
-    case 'about-repo': window.open('https://cnb.cool/linshi-2026/wavedrom-gui', '_blank'); break;
+    case 'about-repo': window.open('https://github.com/SuperiorLQF/wave_drom_gui', '_blank'); break;
     case 'open-shortcut': $('#shortcutMask').classList.add('open'); break;
     case 'shortcut-close': $('#shortcutMask').classList.remove('open'); break;
     case 'open-edge-pop': renderEdges(); $('#edgeMask').classList.add('open'); break;

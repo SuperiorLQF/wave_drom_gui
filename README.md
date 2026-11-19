@@ -2,7 +2,9 @@
 
 **简体中文** | [English](./README.en.md)
 
-👉 [操作手册（含 GIF 演示）](./features.html) · [在线阅读](https://superiorlqf.github.io/wave_drom_gui/features.html)
+👉 **[在线使用（本仓库最新版）](https://superiorlqf.github.io/wave_drom_gui/)** · **[操作手册（含 GIF 演示）](https://superiorlqf.github.io/wave_drom_gui/features.html)**
+
+本仓库基于 [上游 WaveDrom-Gui](https://cnb.cool/linshi-2026/wavedrom-gui) 扩展开发；以上入口部署自本仓库 `main` 分支，包含新增的缩放、边沿拖动、毛刺笔刷和操作手册。
 
 WaveDrom 时序图工具集，目前包含四个产品：一个鼠标点选即可编辑的 **Web 可视化编辑器**，一个无浏览器的 **命令行渲染 Skill**，一个 **VSCode 插件**（beta），以及一个 **kodbox 在线网盘插件**（beta）。它们通过图片元数据打通——**Skill 导出的 SVG/PNG 内嵌 WaveJSON，Web 编辑器「打开文件」即可直接还原成可编辑的图表**。零构建、离线可用。代码完全由 GLM-5.3-flash、Qwen3.8-max、deepseek-v4-flash-exp、mimo-v25-pro、claude-opus-4.8 协作完成，工作之余写的，欢迎大家使用、提 issue、PR、关注！
 
@@ -10,7 +12,7 @@ WaveDrom 时序图工具集，目前包含四个产品：一个鼠标点选即�
 
 ## 产品一：WaveDrom Web 编辑器
 
-单文件 HTML 应用（约 650 KB）：用鼠标点击/拖拽编辑 WaveDrom 时序图，右侧官方引擎实时渲染，左侧同步生成 WaveJSON 代码，兼容大部分 WaveDrom 常用语法。直接用浏览器打开 `index.html` 即可（file:// 协议可用，无需服务器），也可使用 [demo站点](https://wave.rtlyes.cn/)（免费服务，不保证可用）。
+单文件 HTML 应用（约 650 KB）：用鼠标点击/拖拽编辑 WaveDrom 时序图，右侧官方引擎实时渲染，左侧同步生成 WaveJSON 代码，兼容大部分 WaveDrom 常用语法。直接用浏览器打开 `index.html` 即可（file:// 协议可用，无需服务器），也可使用 [本仓库在线编辑器](https://superiorlqf.github.io/wave_drom_gui/)。
 
 编辑网格支持 **Ctrl＋滚轮缩放时间轴（25%–300%）**，以鼠标位置为中心；点击工具栏百分比恢复 100%。缩小时上下刻度自动避让，长数据标签按可用空间省略。普通滚轮仍切换单元格状态，缩放不改变 WaveJSON 的 `hscale` 或右侧实时预览。
 
