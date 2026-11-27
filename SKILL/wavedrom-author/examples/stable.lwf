@@ -1,0 +1,13 @@
+@enable, type=bin
+1
+1
+1
+1
+1
+
+@data, type=bus
+"INIT"
+"INIT"
+"INIT"
+"INIT"
+"INIT"

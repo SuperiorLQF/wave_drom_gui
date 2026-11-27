@@ -1,0 +1,30 @@
+{
+  "signal": [
+    [
+      "High",
+      {
+        "name": "intentional notches",
+        "wave": "1111"
+      },
+      {
+        "name": "stable high",
+        "wave": "1..."
+      }
+    ],
+    [
+      "Low",
+      {
+        "name": "intentional notches",
+        "wave": "0000"
+      },
+      {
+        "name": "stable low",
+        "wave": "0..."
+      }
+    ]
+  ],
+  "head": {
+    "text": "Same logic levels, different native drawing",
+    "tick": 0
+  }
+}

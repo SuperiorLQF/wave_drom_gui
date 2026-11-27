@@ -2,7 +2,7 @@
 name: wavedrom-render
 description: >
   当用户需要将时序、周期行为或信号波形可视化，
-  或需要渲染、预览、编写、修复 WaveDrom / WaveJSON 时使用。
+  或已有 WaveDrom / WaveJSON，需要渲染、预览为图片时使用。
   支持 AI 生成或用户手写的 WaveJSON，输出 SVG / PNG。
   默认使用与 wavedrom-gui 一致的现代浅色风格，
   也支持官方 WaveDrom v3.5.0 的传统风格。
@@ -11,9 +11,9 @@ description: >
   waveform picture, timing diagram, 波形图, or to render/preview a signal as SVG/PNG,
   use this skill. Fully self-contained: needs only Node.js (+ a PNG rasterizer such as
   Python cairosvg). Does NOT need index.html or a browser.
-  Also use it whenever you are asked to write / fix WaveJSON code: the skill contains a
-  「WaveJSON 生成指南」(authoring rules — repeated states must use continuation dots,
-  single-bit signals must not use data-bus chars) that generated code must follow.
+  For authoring from requirements or RTL, prefer the companion wavedrom-author skill
+  first, then use this skill to render the resulting WaveJSON. Preserve intentional
+  task boundaries and glitches; do not silently normalize user-provided waveforms.
 ---
 
 # WaveDrom Render
@@ -30,7 +30,7 @@ description: >
 
 ## WaveJSON 生成指南
 
-AI 或人工编写 / 修改 WaveJSON 时遵守以下规则与速查表。
+AI 从需求或 RTL 编写时，优先使用相邻 [wavedrom-author](../wavedrom-author/SKILL.md) 的 LWF 原稿检查与编译流程，再用本 Skill 渲染。以下为默认规则：用户明确要求任务 A/B 分拍强调或有意毛刺时，可保留 `11`／`1111` 等重复字符，不能擅自归一化。
 
 ### 规则 1：连续相同状态 → 状态字符 + 延续符 `.`
 
@@ -75,7 +75,7 @@ AI 或人工编写 / 修改 WaveJSON 时遵守以下规则与速查表。
 | `.` | 延续上一拍状态（见规则 1） |
 | `\|` | 间隙标记：占一拍、画断口，常用于省略无关时段 |
 | `<` `>` | 子周期区段起止：两者之间的字符按半拍宽渲染（亚拍级毛刺 / 跳变） |
-| 空格 | 空白拍（该拍不绘制） |
+| 空格 | 不是可移植的空白拍表示；不要用它制造中间空白，优先使用明确状态或带说明的间隙 |
 
 **信号对象字段：**
 

@@ -1,0 +1,29 @@
+{
+  "signal": [
+    {
+      "name": "clk",
+      "wave": "p.........",
+      "phase": 0.5
+    },
+    {
+      "name": "valid",
+      "wave": "0.1...0..."
+    },
+    {
+      "name": "ready",
+      "wave": "0...1...0."
+    },
+    {
+      "name": "data[7:0]",
+      "wave": "x.=..=x...",
+      "data": [
+        "A",
+        "B"
+      ]
+    }
+  ],
+  "head": {
+    "text": "Ready/valid: A waits, then A and B transfer",
+    "tick": 0
+  }
+}

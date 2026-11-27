@@ -1,0 +1,16 @@
+{
+  "signal": [
+    {
+      "name": "enable",
+      "wave": "11",
+      "node": "ab"
+    }
+  ],
+  "edge": [
+    "a->b task A then task B"
+  ],
+  "head": {
+    "text": "Two explicitly distinct task cycles",
+    "tick": 0
+  }
+}

@@ -94,3 +94,7 @@ Follow me on Xiaohongshu (RED):
 If you find it useful, a WeChat tip is welcome — but the tool is free and open source either way. Enjoy!
 
 ![WeChat tip](./images/wxzsm.png)
+
+## AI waveform authoring skill
+
+[**wavedrom-author**](./SKILL/wavedrom-author/SKILL.md) uses LWF (Language-oriented Waveform Format) as a readable source: a signal header followed by one explicit value per cycle. Check and iterate in `.lwf`, then compile to generated WaveJSON; never patch generated JSON by hand. A trailing `!` preserves deliberate task/transaction boundaries. Stable five-cycle high defaults to `1....`, not `11111`; repeated states are reserved for deliberate task boundaries or glitches. It includes a dependency-free Node.js validator and four examples, and reuses the existing renderer. Static reasoning is explicitly distinguished from simulation. Copy the full skill directory into your AI client's skills directory; rendering separately requires `wavedrom-render`.

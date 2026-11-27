@@ -40,6 +40,25 @@ WaveDrom 时序图工具集，目前包含四个产品：一个鼠标点选即�
 
 👉 详细功能说明见 [EDITOR.md](./EDITOR.md)（英文版 [EDITOR.en.md](./EDITOR.en.md)）。
 
+## AI 编写波形 Skill：wavedrom-author
+
+新增 [wavedrom-author](./SKILL/wavedrom-author/SKILL.md)，让 AI 先用 **LWF（语言化波形格式）逐行写出每拍的值**，在原稿上检查和迭代，再由转换器生成 WaveJSON，并复用现有渲染器出图。
+
+- **默认用延续符**：高电平五拍写 `1....`，而不是带尖刺的 `11111`；只有用户明确强调任务 A/B、分拍边界或有意毛刺时才重复状态字符。
+- **LWF 是唯一编辑原稿**：`@名称, type=bin/bus` 后每行一拍；相同值由程序转换成 `.`，行末 `!` 保留任务/交易边界。
+- **先检查原稿、再转换**：`--check` 显示逐拍表；后续修改也只改 `.lwf`，不手工修补生成 JSON。拍数不等默认报错，不补值。
+- 不把静态 RTL 推导称作仿真结果。
+- 自带零第三方依赖校验器，检查重复电平、总线标签、节点箭头及常用时间参数；告警不自动改写用户数据。
+- 附基础 LWF、稳定状态、任务分拍示例，以及 ready-valid 等原生 JSON 参考。
+
+```bash
+node SKILL/wavedrom-author/scripts/compile.cjs diagram.lwf --check
+node SKILL/wavedrom-author/scripts/compile.cjs diagram.lwf --out diagram.generated.json
+node SKILL/wavedrom-render/render.js diagram.generated.json --strict --mode traditional --format svg --out diagram.svg
+```
+
+安装时完整复制 `SKILL/wavedrom-author/` 到 AI 客户端的 skills 目录；独立渲染还需要 `wavedrom-render`。完整说明见 [Skill 使用流程](./SKILL/wavedrom-author/SKILL.md)。
+
 ## 产品二：wavedrom-render Skill
 
 把 WaveJSON（AI 生成的或手写的）渲染成时序波形图、输出 SVG / PNG 的命令行工具，专为 AI agent 与脚本场景设计：**无需浏览器、无需 index.html**，只要 Node.js（出 PNG 需任一光栅化器）。
