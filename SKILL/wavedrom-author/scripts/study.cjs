@@ -40,7 +40,7 @@ function snapshot(){
  const files={};
  function walk(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,entry.name);if(entry.isDirectory())walk(p);else files[path.relative(root,p).split(path.sep).join('/')]=digest(fs.readFileSync(p))}}
  walk(examples);
- for(const name of ['SKILL.md','references/lwf.md','references/continuations.md','references/protocols.md','references/self-study.md','scripts/compile.cjs','scripts/validate.cjs','scripts/study.cjs','scripts/test-examples.cjs','scripts/test.cjs','scripts/test-lwf.cjs'])files[name]=digest(fs.readFileSync(path.join(root,name)));
+ for(const name of ['SKILL.md','references/lwf.md','references/continuations.md','references/protocols.md','references/self-study.md','references/image-to-lwf.md','scripts/compile.cjs','scripts/validate.cjs','scripts/study.cjs','scripts/test-examples.cjs','scripts/test.cjs','scripts/test-lwf.cjs'])files[name]=digest(fs.readFileSync(path.join(root,name)));
  return {version:1,files};
 }
 function prepare(stateFile,out){
