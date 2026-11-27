@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "basic",
+      "prompt": "lessons/basic.md",
+      "lwf": "basic.lwf",
+      "json": "basic.json",
+      "kind": "syntax"
+    },
+    {
+      "id": "stable",
+      "prompt": "lessons/stable.md",
+      "lwf": "stable.lwf",
+      "json": "stable.json",
+      "kind": "syntax"
+    },
+    {
+      "id": "tasks",
+      "prompt": "lessons/tasks.md",
+      "lwf": "tasks.lwf",
+      "json": "tasks.json",
+      "kind": "syntax"
+    },
+    {
+      "id": "rising-edge",
+      "prompt": "lessons/rising-edge.md",
+      "lwf": "rising-edge.lwf",
+      "json": "rising-edge.json",
+      "kind": "paired"
+    },
+    {
+      "id": "wide-clock",
+      "prompt": "lessons/wide-clock.md",
+      "lwf": "wide-clock.lwf",
+      "json": "wide-clock.json",
+      "kind": "paired"
+    },
+    {
+      "id": "icg-gated",
+      "prompt": "lessons/icg-gated.md",
+      "lwf": "icg-gated.lwf",
+      "json": "icg-gated.json",
+      "kind": "paired"
+    },
+    {
+      "id": "clock-div2",
+      "prompt": "lessons/clock-div2.md",
+      "lwf": "clock-div2.lwf",
+      "json": "clock-div2.json",
+      "kind": "paired"
+    },
+    {
+      "id": "ready-valid-sync",
+      "prompt": "lessons/ready-valid-sync.md",
+      "lwf": "ready-valid-sync.lwf",
+      "json": "ready-valid-sync.json",
+      "kind": "paired"
+    },
+    {
+      "id": "axi4-write-sync",
+      "prompt": "lessons/axi4-write-sync.md",
+      "lwf": "axi4-write-sync.lwf",
+      "json": "axi4-write-sync.json",
+      "kind": "paired"
+    },
+    {
+      "id": "intentional-glitches",
+      "prompt": "lessons/intentional-glitches.md",
+      "json": "intentional-glitches.json",
+      "kind": "native-reference"
+    },
+    {
+      "id": "ready-valid",
+      "prompt": "lessons/ready-valid.md",
+      "json": "ready-valid.json",
+      "kind": "native-reference"
+    },
+    {
+      "id": "request-ack",
+      "prompt": "lessons/request-ack.md",
+      "json": "request-ack.json",
+      "kind": "native-reference"
+    },
+    {
+      "id": "task-boundaries",
+      "prompt": "lessons/task-boundaries.md",
+      "json": "task-boundaries.json",
+      "kind": "native-reference"
+    }
+  ]
+}

@@ -39,7 +39,9 @@ node scripts/compile.cjs diagram.lwf --check
 
 **AI 必须进一步检查语义**：复位、有效电平、每个采样时刻、握手、背压数据稳定、任务边界和观察窗口是否满足需求。语法检查成功不是协议验证成功，也不是仿真通过。
 
-确定原稿正确后再转换：
+还必须完成 [SKILL.md 的转换前门禁](../SKILL.md#转换前门禁)：检查上升沿同步、沿间稳定及相关信号的协议时序，并记录逐拍依据。存在 FAIL 或 UNKNOWN 时禁止转换；每次修改后重新检查。此为 AI 的工作流程要求，当前转换器不会自动证明协议关系。
+
+全部门禁通过后再转换：
 
 ```bash
 node scripts/compile.cjs diagram.lwf --out diagram.generated.json

@@ -1,0 +1,19 @@
+{
+  "signal": [
+    {
+      "name": "active",
+      "wave": "11.."
+    },
+    {
+      "name": "transaction",
+      "wave": "==..",
+      "data": [
+        "A",
+        "A"
+      ]
+    }
+  ],
+  "head": {
+    "tick": 0
+  }
+}

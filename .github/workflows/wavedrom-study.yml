@@ -1,0 +1,51 @@
+name: WaveDrom examples study check
+
+on:
+  schedule:
+    # 04:00 Asia/Shanghai = 20:00 UTC on the preceding date.
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wavedrom-study
+  cancel-in-progress: false
+
+jobs:
+  check-examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Restore previous checked snapshot
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/wavedrom-study-state
+          key: wavedrom-study-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: wavedrom-study-
+      - name: Check compiler and all reference examples
+        run: |
+          node SKILL/wavedrom-author/scripts/test.cjs
+          node SKILL/wavedrom-author/scripts/test-lwf.cjs
+          node SKILL/wavedrom-author/scripts/test-examples.cjs
+      - name: Compare latest examples and prepare learning tasks
+        run: |
+          node SKILL/wavedrom-author/scripts/study.cjs prepare \
+            "${{ runner.temp }}/wavedrom-study-state/snapshot.json" \
+            "${{ runner.temp }}/wavedrom-study-report"
+          cat "${{ runner.temp }}/wavedrom-study-report/study-task.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Save checked snapshot (not AI learning completion)
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/wavedrom-study-state
+          key: wavedrom-study-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wavedrom-study
+          path: ${{ runner.temp }}/wavedrom-study-report
+          retention-days: 14

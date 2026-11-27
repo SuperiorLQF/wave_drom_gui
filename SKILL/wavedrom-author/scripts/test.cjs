@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {validate}=require('./validate.cjs');
-for(const name of fs.readdirSync(path.join(__dirname,'../examples')).filter(name=>name.endsWith('.json'))){const doc=JSON.parse(fs.readFileSync(path.join(__dirname,'../examples',name)));assert.deepEqual(validate(doc).errors,[],name);}
+for(const name of fs.readdirSync(path.join(__dirname,'../examples')).filter(name=>name.endsWith('.json')&&name!=='catalog.json')){const doc=JSON.parse(fs.readFileSync(path.join(__dirname,'../examples',name)));assert.deepEqual(validate(doc).errors,[],name);}
 assert.equal(validate({signal:[{wave:'1....'}]}).warnings.length,0);
 assert.equal(validate({signal:[{wave:'11111'}]}).warnings.length,4);
 assert.equal(validate({signal:[{wave:'010101'}]}).warnings.length,0);

@@ -1,0 +1,56 @@
+@CLK, type=bin
+0
+1
+0
+1
+0
+1
+0
+1
+0
+1
+0
+1
+
+@VALID, type=bin
+0
+0
+0
+1
+1
+1
+1
+1
+1
+0
+0
+0
+
+@READY, type=bin
+0
+0
+0
+0
+0
+1
+1
+1
+1
+0
+0
+0
+
+@DATA, type=bus
+x
+x
+x
+"A"
+"A"
+"A"
+"A"
+"B"
+"B"
+x
+x
+x
+

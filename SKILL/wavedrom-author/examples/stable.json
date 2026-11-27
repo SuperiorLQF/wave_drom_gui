@@ -1,0 +1,18 @@
+{
+  "signal": [
+    {
+      "name": "enable",
+      "wave": "1...."
+    },
+    {
+      "name": "data",
+      "wave": "=....",
+      "data": [
+        "INIT"
+      ]
+    }
+  ],
+  "head": {
+    "tick": 0
+  }
+}
